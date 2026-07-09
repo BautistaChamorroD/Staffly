@@ -4,6 +4,12 @@ spring:
   profiles:
     active: dev
 
+staffly:
+  security:
+    jwt:
+      access-token-minutes: 30
+      refresh-token-days: 7
+
 ---
 spring:
   config:
@@ -25,6 +31,11 @@ spring:
   flyway:
     enabled: true
 
+staffly:
+  security:
+    jwt:
+      secret: dev-only-secret-key-not-for-production-use-change-me-1234567890
+
 ---
 spring:
   config:
@@ -42,6 +53,11 @@ spring:
   flyway:
     enabled: true
 
+staffly:
+  security:
+    jwt:
+      secret: dev-only-secret-key-not-for-production-use-change-me-1234567890
+
 ---
 spring:
   config:
@@ -56,3 +72,8 @@ spring:
       ddl-auto: none
   flyway:
     enabled: true
+
+staffly:
+  security:
+    jwt:
+      secret: ${JWT_SECRET}
