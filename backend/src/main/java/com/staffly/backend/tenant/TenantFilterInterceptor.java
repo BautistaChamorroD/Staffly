@@ -42,4 +42,21 @@ public class TenantFilterInterceptor implements HandlerInterceptor {
 
         return true;
     }
+
+    /**
+     * Desactiva el filtro al terminar el request. En un request HTTP real
+     * cada uno tiene su propio EntityManager (open-in-view), así que esto
+     * no cambia nada en producción — pero es necesario para no dejar el
+     * filtro "pegado" en sesiones de Hibernate de vida más larga que un
+     * único request (ej. tests @Transactional que comparten una sesión
+     * entre varias llamadas a MockMvc).
+     */
+    @Override
+    public void afterCompletion(
+            @NonNull HttpServletRequest request,
+            @NonNull HttpServletResponse response,
+            @NonNull Object handler,
+            Exception ex) {
+        entityManager.unwrap(Session.class).disableFilter("tenantFilter");
+    }
 }
