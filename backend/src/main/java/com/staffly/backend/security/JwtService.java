@@ -23,6 +23,7 @@ public class JwtService {
     private static final String CLAIM_ROLE = "role";
     private static final String CLAIM_BRANCH_IDS = "branch_ids";
     private static final String CLAIM_TYPE = "type";
+    private static final String CLAIM_JTI = "jti";
 
     public static final String TYPE_ACCESS = "access";
     public static final String TYPE_REFRESH = "refresh";
@@ -61,6 +62,7 @@ public class JwtService {
                 .claim(CLAIM_ROLE, principal.getRol().name())
                 .claim(CLAIM_BRANCH_IDS, branchIds)
                 .claim(CLAIM_TYPE, type)
+                .claim(CLAIM_JTI, UUID.randomUUID().toString())
                 .issuedAt(Date.from(issuedAt))
                 .expiration(Date.from(expiresAt))
                 .signWith(signingKey)
@@ -97,5 +99,9 @@ public class JwtService {
 
     public String getTokenType(Claims claims) {
         return claims.get(CLAIM_TYPE, String.class);
+    }
+
+    public UUID getJti(Claims claims) {
+        return UUID.fromString(claims.get(CLAIM_JTI, String.class));
     }
 }

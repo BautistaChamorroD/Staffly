@@ -36,6 +36,18 @@ class JwtServiceTest {
         assertThat(parsed.getCompanyId()).isEqualTo(companyId);
         assertThat(parsed.getRol()).isEqualTo(Rol.ADMIN);
         assertThat(parsed.getBranchIds()).containsExactly(branchId);
+        assertThat(jwtService.getJti(claims)).isNotNull();
+    }
+
+    @Test
+    void eachGeneratedTokenHasAUniqueJti() {
+        JwtService jwtService = newService(30, 7);
+        StafflyUserPrincipal principal = new StafflyUserPrincipal(UUID.randomUUID(), UUID.randomUUID(), Rol.ADMIN, List.of());
+
+        UUID jti1 = jwtService.getJti(jwtService.parseToken(jwtService.generateAccessToken(principal)));
+        UUID jti2 = jwtService.getJti(jwtService.parseToken(jwtService.generateAccessToken(principal)));
+
+        assertThat(jti1).isNotEqualTo(jti2);
     }
 
     @Test
