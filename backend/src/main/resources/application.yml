@@ -29,6 +29,23 @@ spring:
 spring:
   config:
     activate:
+      on-profile: postgres-local
+  datasource:
+    url: jdbc:postgresql://localhost:5432/staffly
+    driver-class-name: org.postgresql.Driver
+    username: staffly
+    password: staffly
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: true
+  flyway:
+    enabled: true
+
+---
+spring:
+  config:
+    activate:
       on-profile: prod
   datasource:
     url: ${DB_URL}
