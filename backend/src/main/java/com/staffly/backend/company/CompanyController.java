@@ -7,6 +7,7 @@ import com.staffly.backend.company.dto.UpdateCompanyRequest;
 import com.staffly.backend.company.dto.UpdateCompanyStatusRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -21,6 +22,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/companies")
+@PreAuthorize("hasRole('SUPER_ADMIN')")
 public class CompanyController {
 
     private final CompanyService companyService;

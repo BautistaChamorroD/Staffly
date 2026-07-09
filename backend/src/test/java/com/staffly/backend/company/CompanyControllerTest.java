@@ -5,6 +5,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.staffly.backend.platform.EstadoPlatformAdmin;
 import com.staffly.backend.platform.PlatformAdmin;
 import com.staffly.backend.platform.PlatformAdminRepository;
+import com.staffly.backend.user.EstadoUsuario;
+import com.staffly.backend.user.RolUsuario;
+import com.staffly.backend.user.User;
+import com.staffly.backend.user.UserRepository;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -45,6 +49,9 @@ class CompanyControllerTest {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private UserRepository userRepository;
 
     private String callerAccessToken;
 
@@ -184,5 +191,47 @@ class CompanyControllerTest {
                         .contentType("application/json")
                         .content(body))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void createAsRegularAdminReturns403() throws Exception {
+        // Company existente + un User rol ADMIN "normal" (no SUPER_ADMIN):
+        // /companies es exclusivo de la plataforma, ni el Admin de una
+        // empresa cliente puede darse de alta otra empresa.
+        Company company = new Company();
+        company.setNombre("Empresa Cliente");
+        company.setRazonSocial("Empresa Cliente SRL");
+        company.setPais("AR");
+        company.setMoneda("ARS");
+        company.setZonaHoraria("America/Argentina/Buenos_Aires");
+        company.setEstado(EstadoEmpresa.ACTIVA);
+        entityManager.persist(company);
+
+        User admin = new User();
+        admin.setCompanyId(company.getId());
+        admin.setEmail("admin-normal@empresa-cliente.com");
+        admin.setPasswordHash(passwordEncoder.encode(CALLER_PASSWORD));
+        admin.setRol(RolUsuario.ADMIN);
+        admin.setEstado(EstadoUsuario.ACTIVO);
+        admin.setDebeCambiarPassword(false);
+        userRepository.save(admin);
+        entityManager.flush();
+
+        String loginBody = objectMapper.writeValueAsString(Map.of(
+                "email", "admin-normal@empresa-cliente.com",
+                "password", CALLER_PASSWORD));
+        String loginResponse = mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType("application/json")
+                        .content(loginBody))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        String adminToken = objectMapper.readTree(loginResponse).get("accessToken").asText();
+
+        mockMvc.perform(post("/api/v1/companies")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType("application/json")
+                        .content(createCompanyRequestBody("otra@donjose.com")))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
     }
 }

@@ -7,6 +7,7 @@ import com.staffly.backend.employee.dto.CreateEmployeeRequest;
 import com.staffly.backend.employee.dto.EmployeeResponse;
 import com.staffly.backend.employee.dto.UpdateEmployeeRequest;
 import com.staffly.backend.employee.dto.UpdateEmployeeStatusRequest;
+import com.staffly.backend.security.Rol;
 import com.staffly.backend.security.StafflyUserPrincipal;
 import com.staffly.backend.user.User;
 import com.staffly.backend.user.UserRepository;
@@ -33,9 +34,10 @@ public class EmployeeService {
     }
 
     @Transactional(readOnly = true)
-    public List<EmployeeResponse> list(EstadoLaboral estadoLaboral, UUID branchId, String search) {
+    public List<EmployeeResponse> list(EstadoLaboral estadoLaboral, UUID branchId, String search, StafflyUserPrincipal principal) {
         String normalizedSearch = search != null ? search.toLowerCase() : null;
         return employeeRepository.findAll().stream()
+                .filter(e -> isInScope(e, principal))
                 .filter(e -> estadoLaboral == null || e.getEstadoLaboral() == estadoLaboral)
                 .filter(e -> branchId == null || e.getBranches().stream().anyMatch(b -> b.getId().equals(branchId)))
                 .filter(e -> normalizedSearch == null
@@ -48,7 +50,7 @@ public class EmployeeService {
 
     @Transactional(readOnly = true)
     public EmployeeResponse getById(UUID id, StafflyUserPrincipal principal) {
-        return EmployeeResponse.from(findEmployeeOrThrow(id, principal.getCompanyId()));
+        return EmployeeResponse.from(findEmployeeOrThrow(id, principal));
     }
 
     @Transactional(readOnly = true)
@@ -86,7 +88,7 @@ public class EmployeeService {
 
     @Transactional
     public EmployeeResponse update(UUID id, UpdateEmployeeRequest request, StafflyUserPrincipal principal) {
-        Employee employee = findEmployeeOrThrow(id, principal.getCompanyId());
+        Employee employee = findEmployeeOrThrow(id, principal);
 
         if (request.nombre() != null) {
             employee.setNombre(request.nombre());
@@ -131,14 +133,14 @@ public class EmployeeService {
 
     @Transactional
     public EmployeeResponse updateStatus(UUID id, UpdateEmployeeStatusRequest request, StafflyUserPrincipal principal) {
-        Employee employee = findEmployeeOrThrow(id, principal.getCompanyId());
+        Employee employee = findEmployeeOrThrow(id, principal);
         employee.setEstadoLaboral(request.estadoLaboral());
         return EmployeeResponse.from(employeeRepository.save(employee));
     }
 
     @Transactional(readOnly = true)
     public List<Object> getHistory(UUID id, StafflyUserPrincipal principal) {
-        findEmployeeOrThrow(id, principal.getCompanyId());
+        findEmployeeOrThrow(id, principal);
         // AuditLog todavía no existe (BE-1.8, opcional). El contrato del
         // endpoint queda estable desde ya; cuando exista, esto pasa a
         // consultar el historial real en vez de devolver vacío.
@@ -154,8 +156,23 @@ public class EmployeeService {
         return branches;
     }
 
-    private Employee findEmployeeOrThrow(UUID id, UUID companyId) {
-        return employeeRepository.findByIdAndCompanyId(id, companyId)
+    private Employee findEmployeeOrThrow(UUID id, StafflyUserPrincipal principal) {
+        Employee employee = employeeRepository.findByIdAndCompanyId(id, principal.getCompanyId())
                 .orElseThrow(() -> new ResourceNotFoundException("No se encontró el empleado solicitado"));
+        if (!isInScope(employee, principal)) {
+            throw new ResourceNotFoundException("No se encontró el empleado solicitado");
+        }
+        return employee;
+    }
+
+    /**
+     * ADMIN/RRHH ven cualquier empleado de la empresa. SUPERVISOR solo los
+     * que tienen alguna sucursal en principal.getBranchIds() (viene del JWT).
+     */
+    private boolean isInScope(Employee employee, StafflyUserPrincipal principal) {
+        if (principal.getRol() != Rol.SUPERVISOR) {
+            return true;
+        }
+        return employee.getBranches().stream().anyMatch(b -> principal.getBranchIds().contains(b.getId()));
     }
 }

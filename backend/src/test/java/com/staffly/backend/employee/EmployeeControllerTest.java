@@ -92,6 +92,11 @@ class EmployeeControllerTest {
     }
 
     private String createUserAndLogin(UUID companyId, String email, RolUsuario rol, Employee employee) throws Exception {
+        return createUserAndLogin(companyId, email, rol, employee, null);
+    }
+
+    private String createUserAndLogin(
+            UUID companyId, String email, RolUsuario rol, Employee employee, Branch assignedBranch) throws Exception {
         User user = new User();
         user.setCompanyId(companyId);
         user.setEmail(email);
@@ -101,6 +106,9 @@ class EmployeeControllerTest {
         user.setDebeCambiarPassword(false);
         if (employee != null) {
             user.setEmployee(employee);
+        }
+        if (assignedBranch != null) {
+            user.getBranches().add(assignedBranch);
         }
         userRepository.save(user);
         entityManager.flush();
@@ -112,6 +120,18 @@ class EmployeeControllerTest {
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         return objectMapper.readTree(loginResponse).get("accessToken").asText();
+    }
+
+    private Branch createBranchEntity(UUID companyId, String nombre) {
+        Branch branch = new Branch();
+        branch.setCompanyId(companyId);
+        branch.setNombre(nombre);
+        branch.setDireccion("Direccion");
+        branch.setZonaHoraria("America/Argentina/Buenos_Aires");
+        branch.setEstado(EstadoSucursal.ACTIVA);
+        entityManager.persist(branch);
+        entityManager.flush();
+        return branch;
     }
 
     private Map<String, Object> baseEmployeeFields(UUID branchId) {
@@ -309,5 +329,83 @@ class EmployeeControllerTest {
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(baseEmployeeFields(UUID.randomUUID()))))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void employeeRoleCannotAccessListOrGetById() throws Exception {
+        UUID branchId = createBranch(companyAId, "Sucursal Centro");
+        String createResponse = mockMvc.perform(post("/api/v1/employees")
+                        .header("Authorization", "Bearer " + companyAToken)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(baseEmployeeFields(branchId))))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String employeeId = objectMapper.readTree(createResponse).get("id").asText();
+
+        String employeeToken = createUserAndLogin(companyAId, "empleado-raso@empresa-a.com", RolUsuario.EMPLOYEE, null);
+
+        mockMvc.perform(get("/api/v1/employees")
+                        .header("Authorization", "Bearer " + employeeToken))
+                .andExpect(status().isForbidden());
+
+        // ni siquiera puede pedir su propio registro por /{id}, solo por /me (RF-29)
+        mockMvc.perform(get("/api/v1/employees/" + employeeId)
+                        .header("Authorization", "Bearer " + employeeToken))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void supervisorOnlySeesEmployeesFromAssignedBranches() throws Exception {
+        Branch assignedBranch = createBranchEntity(companyAId, "Sucursal Asignada");
+        UUID otherBranchId = createBranch(companyAId, "Sucursal No Asignada");
+
+        String createOwnResponse = mockMvc.perform(post("/api/v1/employees")
+                        .header("Authorization", "Bearer " + companyAToken)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(baseEmployeeFields(assignedBranch.getId()))))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String ownEmployeeId = objectMapper.readTree(createOwnResponse).get("id").asText();
+
+        String createOtherResponse = mockMvc.perform(post("/api/v1/employees")
+                        .header("Authorization", "Bearer " + companyAToken)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(baseEmployeeFields(otherBranchId))))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String otherEmployeeId = objectMapper.readTree(createOtherResponse).get("id").asText();
+
+        String supervisorToken = createUserAndLogin(
+                companyAId, "supervisor-a@empresa-a.com", RolUsuario.SUPERVISOR, null, assignedBranch);
+
+        mockMvc.perform(get("/api/v1/employees")
+                        .header("Authorization", "Bearer " + supervisorToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].id").value(ownEmployeeId));
+
+        mockMvc.perform(get("/api/v1/employees/" + ownEmployeeId)
+                        .header("Authorization", "Bearer " + supervisorToken))
+                .andExpect(status().isOk());
+
+        // mismo tenant, pero de una sucursal que no le fue asignada -> 404
+        mockMvc.perform(get("/api/v1/employees/" + otherEmployeeId)
+                        .header("Authorization", "Bearer " + supervisorToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("RESOURCE_NOT_FOUND"));
+    }
+
+    @Test
+    void supervisorCannotCreateOrEditEmployees() throws Exception {
+        Branch assignedBranch = createBranchEntity(companyAId, "Sucursal Asignada");
+        String supervisorToken = createUserAndLogin(
+                companyAId, "supervisor-b@empresa-a.com", RolUsuario.SUPERVISOR, null, assignedBranch);
+
+        mockMvc.perform(post("/api/v1/employees")
+                        .header("Authorization", "Bearer " + supervisorToken)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(baseEmployeeFields(assignedBranch.getId()))))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
     }
 }
