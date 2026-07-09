@@ -74,14 +74,18 @@ class UserControllerTest {
     }
 
     private String createAdminAndLogin(UUID companyId, String email) throws Exception {
-        User admin = new User();
-        admin.setCompanyId(companyId);
-        admin.setEmail(email);
-        admin.setPasswordHash(passwordEncoder.encode(PASSWORD));
-        admin.setRol(RolUsuario.ADMIN);
-        admin.setEstado(EstadoUsuario.ACTIVO);
-        admin.setDebeCambiarPassword(false);
-        userRepository.save(admin);
+        return createUserAndLoginWithRol(companyId, email, RolUsuario.ADMIN);
+    }
+
+    private String createUserAndLoginWithRol(UUID companyId, String email, RolUsuario rol) throws Exception {
+        User user = new User();
+        user.setCompanyId(companyId);
+        user.setEmail(email);
+        user.setPasswordHash(passwordEncoder.encode(PASSWORD));
+        user.setRol(rol);
+        user.setEstado(EstadoUsuario.ACTIVO);
+        user.setDebeCambiarPassword(false);
+        userRepository.save(user);
         entityManager.flush();
 
         String loginBody = objectMapper.writeValueAsString(Map.of("email", email, "password", PASSWORD));
@@ -258,5 +262,40 @@ class UserControllerTest {
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(Map.of("email", "sinauth@empresa-a.com", "rol", "RRHH"))))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void rrhhCannotCreateUsersReturns403() throws Exception {
+        String rrhhToken = createUserAndLoginWithRol(companyAId, "rrhh-a@empresa-a.com", RolUsuario.RRHH);
+
+        mockMvc.perform(post("/api/v1/users")
+                        .header("Authorization", "Bearer " + rrhhToken)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(Map.of("email", "otro@empresa-a.com", "rol", "RRHH"))))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
+    }
+
+    @Test
+    void nonAdminCanViewOwnUserByIdButNotAnothers() throws Exception {
+        String rrhhToken = createUserAndLoginWithRol(companyAId, "rrhh-a@empresa-a.com", RolUsuario.RRHH);
+        String rrhhUserId = objectMapper.readTree(
+                        mockMvc.perform(get("/api/v1/users/me").header("Authorization", "Bearer " + rrhhToken))
+                                .andReturn().getResponse().getContentAsString())
+                .get("id").asText();
+
+        mockMvc.perform(get("/api/v1/users/" + rrhhUserId)
+                        .header("Authorization", "Bearer " + rrhhToken))
+                .andExpect(status().isOk());
+
+        // ADMIN de la misma empresa existe (companyAToken) - el RRHH no puede verlo por /{id}
+        String adminUserId = objectMapper.readTree(
+                        mockMvc.perform(get("/api/v1/users/me").header("Authorization", "Bearer " + companyAToken))
+                                .andReturn().getResponse().getContentAsString())
+                .get("id").asText();
+
+        mockMvc.perform(get("/api/v1/users/" + adminUserId)
+                        .header("Authorization", "Bearer " + rrhhToken))
+                .andExpect(status().isNotFound());
     }
 }

@@ -7,6 +7,7 @@ import com.staffly.backend.branch.dto.UpdateBranchStatusRequest;
 import com.staffly.backend.security.StafflyUserPrincipal;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -31,17 +32,20 @@ public class BranchController {
     }
 
     @GetMapping
-    public ResponseEntity<List<BranchResponse>> list() {
-        return ResponseEntity.ok(branchService.list());
+    @PreAuthorize("hasAnyRole('ADMIN', 'RRHH', 'SUPERVISOR')")
+    public ResponseEntity<List<BranchResponse>> list(@AuthenticationPrincipal StafflyUserPrincipal principal) {
+        return ResponseEntity.ok(branchService.list(principal));
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'RRHH', 'SUPERVISOR')")
     public ResponseEntity<BranchResponse> getById(
             @PathVariable UUID id, @AuthenticationPrincipal StafflyUserPrincipal principal) {
         return ResponseEntity.ok(branchService.getById(id, principal));
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<BranchResponse> create(
             @Valid @RequestBody CreateBranchRequest request,
             @AuthenticationPrincipal StafflyUserPrincipal principal) {
@@ -50,6 +54,7 @@ public class BranchController {
     }
 
     @PatchMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<BranchResponse> update(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateBranchRequest request,
@@ -58,6 +63,7 @@ public class BranchController {
     }
 
     @PatchMapping("/{id}/status")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<BranchResponse> updateStatus(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateBranchStatusRequest request,

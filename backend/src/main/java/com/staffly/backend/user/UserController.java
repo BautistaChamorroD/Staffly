@@ -8,6 +8,7 @@ import com.staffly.backend.user.dto.UpdateUserStatusRequest;
 import com.staffly.backend.user.dto.UserResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -33,6 +34,7 @@ public class UserController {
     }
 
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<UserResponse>> list(
             @RequestParam(required = false) RolUsuario rol,
             @RequestParam(required = false) EstadoUsuario estado) {
@@ -51,6 +53,7 @@ public class UserController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<CreateUserResponse> create(
             @Valid @RequestBody CreateUserRequest request,
             @AuthenticationPrincipal StafflyUserPrincipal principal) {
@@ -59,6 +62,7 @@ public class UserController {
     }
 
     @PatchMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UserResponse> update(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateUserRequest request,
@@ -67,6 +71,7 @@ public class UserController {
     }
 
     @PatchMapping("/{id}/status")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UserResponse> updateStatus(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateUserStatusRequest request,

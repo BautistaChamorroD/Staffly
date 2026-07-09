@@ -7,6 +7,7 @@ import com.staffly.backend.employee.dto.UpdateEmployeeStatusRequest;
 import com.staffly.backend.security.StafflyUserPrincipal;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -32,31 +33,37 @@ public class EmployeeController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'RRHH', 'SUPERVISOR')")
     public ResponseEntity<List<EmployeeResponse>> list(
             @RequestParam(required = false) EstadoLaboral estadoLaboral,
             @RequestParam(required = false) UUID branchId,
-            @RequestParam(required = false) String search) {
-        return ResponseEntity.ok(employeeService.list(estadoLaboral, branchId, search));
+            @RequestParam(required = false) String search,
+            @AuthenticationPrincipal StafflyUserPrincipal principal) {
+        return ResponseEntity.ok(employeeService.list(estadoLaboral, branchId, search, principal));
     }
 
     @GetMapping("/me")
+    @PreAuthorize("hasRole('EMPLOYEE')")
     public ResponseEntity<EmployeeResponse> me(@AuthenticationPrincipal StafflyUserPrincipal principal) {
         return ResponseEntity.ok(employeeService.getMe(principal));
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'RRHH', 'SUPERVISOR')")
     public ResponseEntity<EmployeeResponse> getById(
             @PathVariable UUID id, @AuthenticationPrincipal StafflyUserPrincipal principal) {
         return ResponseEntity.ok(employeeService.getById(id, principal));
     }
 
     @GetMapping("/{id}/history")
+    @PreAuthorize("hasAnyRole('ADMIN', 'RRHH')")
     public ResponseEntity<List<Object>> history(
             @PathVariable UUID id, @AuthenticationPrincipal StafflyUserPrincipal principal) {
         return ResponseEntity.ok(employeeService.getHistory(id, principal));
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'RRHH')")
     public ResponseEntity<EmployeeResponse> create(
             @Valid @RequestBody CreateEmployeeRequest request,
             @AuthenticationPrincipal StafflyUserPrincipal principal) {
@@ -65,6 +72,7 @@ public class EmployeeController {
     }
 
     @PatchMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'RRHH')")
     public ResponseEntity<EmployeeResponse> update(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateEmployeeRequest request,
@@ -73,6 +81,7 @@ public class EmployeeController {
     }
 
     @PatchMapping("/{id}/status")
+    @PreAuthorize("hasAnyRole('ADMIN', 'RRHH')")
     public ResponseEntity<EmployeeResponse> updateStatus(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateEmployeeStatusRequest request,
