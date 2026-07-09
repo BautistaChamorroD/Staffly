@@ -2,6 +2,7 @@ package com.staffly.backend.company;
 
 import com.staffly.backend.common.ConflictException;
 import com.staffly.backend.common.ResourceNotFoundException;
+import com.staffly.backend.common.TemporaryPasswordGenerator;
 import com.staffly.backend.company.dto.CompanyResponse;
 import com.staffly.backend.company.dto.CreateCompanyRequest;
 import com.staffly.backend.company.dto.CreateCompanyResponse;
@@ -15,7 +16,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.security.SecureRandom;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -23,19 +23,20 @@ import java.util.stream.Collectors;
 @Service
 public class CompanyService {
 
-    private static final String TEMP_PASSWORD_ALPHABET =
-            "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
-    private static final int TEMP_PASSWORD_LENGTH = 12;
-
     private final CompanyRepository companyRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final SecureRandom secureRandom = new SecureRandom();
+    private final TemporaryPasswordGenerator temporaryPasswordGenerator;
 
-    public CompanyService(CompanyRepository companyRepository, UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public CompanyService(
+            CompanyRepository companyRepository,
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            TemporaryPasswordGenerator temporaryPasswordGenerator) {
         this.companyRepository = companyRepository;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.temporaryPasswordGenerator = temporaryPasswordGenerator;
     }
 
     @Transactional(readOnly = true)
@@ -66,7 +67,7 @@ public class CompanyService {
         company.setEstado(EstadoEmpresa.ACTIVA);
         company = companyRepository.save(company);
 
-        String temporaryPassword = generateTemporaryPassword();
+        String temporaryPassword = temporaryPasswordGenerator.generate();
 
         User admin = new User();
         admin.setCompanyId(company.getId());
@@ -116,13 +117,5 @@ public class CompanyService {
     private Company findCompanyOrThrow(UUID id) {
         return companyRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("No se encontró la empresa solicitada"));
-    }
-
-    private String generateTemporaryPassword() {
-        StringBuilder sb = new StringBuilder(TEMP_PASSWORD_LENGTH);
-        for (int i = 0; i < TEMP_PASSWORD_LENGTH; i++) {
-            sb.append(TEMP_PASSWORD_ALPHABET.charAt(secureRandom.nextInt(TEMP_PASSWORD_ALPHABET.length())));
-        }
-        return sb.toString();
     }
 }
