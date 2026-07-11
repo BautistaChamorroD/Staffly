@@ -1,0 +1,64 @@
+<main class="flex min-h-screen items-center justify-center bg-gray-50">
+  <section class="w-full max-w-sm rounded-lg bg-white p-8 shadow">
+    <h1 class="mb-6 text-center text-2xl font-bold text-gray-900">Staffly</h1>
+
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="space-y-4">
+      <div>
+        <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
+        <input
+          id="email"
+          type="email"
+          formControlName="email"
+          autocomplete="username"
+          class="mt-1 w-full rounded border px-3 py-2"
+          [class.border-red-500]="emailCtrl.invalid && emailCtrl.touched"
+          aria-describedby="email-error"
+        />
+        @if (emailCtrl.invalid && emailCtrl.touched) {
+          <p id="email-error" class="mt-1 text-sm text-red-600" role="alert">
+            @if (emailCtrl.errors?.['required']) {
+              El email es requerido.
+            }
+            @if (emailCtrl.errors?.['email']) {
+              Ingresá un email válido.
+            }
+          </p>
+        }
+      </div>
+
+      <div>
+        <label for="password" class="block text-sm font-medium text-gray-700">Contraseña</label>
+        <input
+          id="password"
+          type="password"
+          formControlName="password"
+          autocomplete="current-password"
+          class="mt-1 w-full rounded border px-3 py-2"
+          [class.border-red-500]="passwordCtrl.invalid && passwordCtrl.touched"
+          aria-describedby="password-error"
+        />
+        @if (passwordCtrl.invalid && passwordCtrl.touched) {
+          <p id="password-error" class="mt-1 text-sm text-red-600" role="alert">
+            La contraseña es requerida.
+          </p>
+        }
+      </div>
+
+      @if (errorMessage) {
+        <p class="rounded bg-red-50 p-3 text-sm text-red-700" role="alert">{{ errorMessage }}</p>
+      }
+
+      <button
+        type="submit"
+        [disabled]="isLoading"
+        class="w-full rounded bg-blue-600 px-4 py-2 font-medium text-white disabled:opacity-50"
+      >
+        @if (isLoading) {
+          Ingresando...
+        } @else {
+          Iniciar sesión
+        }
+      </button>
+    </form>
+  </section>
+</main>
