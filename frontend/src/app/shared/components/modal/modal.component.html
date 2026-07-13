@@ -1,0 +1,21 @@
+<div
+  data-testid="modal-backdrop"
+  class="fixed inset-0 z-50 flex items-center justify-center bg-brand-ink/40 p-5"
+  (click)="onBackdropClick()"
+>
+  <div
+    data-testid="modal-dialog"
+    class="w-full max-w-md rounded-2xl bg-brand-card p-6 shadow-xl"
+    (click)="stopPropagation($event)"
+  >
+    <div class="mb-4 flex items-center justify-between gap-4">
+      @if (title) {
+        <h3 class="font-heading text-base font-semibold">{{ title }}</h3>
+      }
+      <button ui-button variant="secondary" size="sm" type="button" aria-label="Cerrar" (click)="closed.emit()">
+        ✕
+      </button>
+    </div>
+    <ng-content></ng-content>
+  </div>
+</div>
