@@ -6,11 +6,14 @@
   <div
     data-testid="modal-dialog"
     class="w-full max-w-md rounded-2xl bg-brand-card p-6 shadow-xl"
+    role="dialog"
+    aria-modal="true"
+    [attr.aria-labelledby]="title ? 'ui-modal-title' : null"
     (click)="stopPropagation($event)"
   >
     <div class="mb-4 flex items-center justify-between gap-4">
       @if (title) {
-        <h3 class="font-heading text-base font-semibold">{{ title }}</h3>
+        <h3 id="ui-modal-title" class="font-heading text-base font-semibold">{{ title }}</h3>
       }
       <button ui-button variant="secondary" size="sm" type="button" aria-label="Cerrar" (click)="closed.emit()">
         ✕

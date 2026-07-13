@@ -62,4 +62,14 @@ describe('ModalComponent', () => {
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     expect(fixture.componentInstance.closedCount).toBe(1);
   });
+
+  it('exposes dialog ARIA semantics linked to the title when title is set', () => {
+    const fixture = TestBed.createComponent(HostComponent);
+    fixture.detectChanges();
+    const dialog = fixture.nativeElement.querySelector('[data-testid="modal-dialog"]') as HTMLElement;
+    const title = fixture.nativeElement.querySelector('h3') as HTMLElement;
+    expect(dialog.getAttribute('role')).toBe('dialog');
+    expect(dialog.getAttribute('aria-modal')).toBe('true');
+    expect(dialog.getAttribute('aria-labelledby')).toBe(title.id);
+  });
 });

@@ -47,4 +47,20 @@ describe('BadgeComponent', () => {
     const span = fixture.nativeElement.querySelector('span') as HTMLElement;
     expect(span.className).toContain('bg-brand-acc-soft');
   });
+
+  it('applies warning classes when variant is warning', () => {
+    const fixture = TestBed.createComponent(HostComponent);
+    fixture.componentInstance.variant = 'warning';
+    fixture.detectChanges();
+    const span = fixture.nativeElement.querySelector('span') as HTMLElement;
+    expect(span.className).toContain('bg-badge-warning-bg');
+  });
+
+  it('applies error classes when variant is error', () => {
+    const fixture = TestBed.createComponent(HostComponent);
+    fixture.componentInstance.variant = 'error';
+    fixture.detectChanges();
+    const span = fixture.nativeElement.querySelector('span') as HTMLElement;
+    expect(span.className).toContain('bg-badge-error-bg');
+  });
 });

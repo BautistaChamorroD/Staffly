@@ -63,4 +63,22 @@ describe('InputComponent', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('[role="alert"]')).toBeNull();
   });
+
+  it('disables the native input when the form control is disabled', () => {
+    const fixture = TestBed.createComponent(HostComponent);
+    fixture.detectChanges();
+    fixture.componentInstance.form.get('email')!.disable();
+    fixture.detectChanges();
+    const input = fixture.nativeElement.querySelector('input') as HTMLInputElement;
+    expect(input.disabled).toBe(true);
+  });
+
+  it('marks the form control as touched when the native input is blurred', () => {
+    const fixture = TestBed.createComponent(HostComponent);
+    fixture.detectChanges();
+    const input = fixture.nativeElement.querySelector('input') as HTMLInputElement;
+    input.dispatchEvent(new Event('blur'));
+    fixture.detectChanges();
+    expect(fixture.componentInstance.form.get('email')!.touched).toBe(true);
+  });
 });

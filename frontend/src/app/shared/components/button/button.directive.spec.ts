@@ -42,6 +42,13 @@ describe('ButtonDirective', () => {
     expect(button.className).toContain('text-xs');
   });
 
+  it('applies default size classes when size is not overridden', () => {
+    const fixture = TestBed.createComponent(HostComponent);
+    fixture.detectChanges();
+    const button = fixture.nativeElement.querySelector('button') as HTMLButtonElement;
+    expect(button.className).toContain('text-sm');
+  });
+
   it('leaves the native disabled attribute under the caller\'s control', () => {
     const fixture = TestBed.createComponent(HostComponent);
     fixture.componentInstance.isDisabled = true;
