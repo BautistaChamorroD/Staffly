@@ -54,9 +54,7 @@ Cada uno en su carpeta (`button/`, `input/`, `table/`, `card/`, `modal/`, `badge
 ### `ui-button` (`shared/components/button/`)
 - `@Input() variant: 'primary' | 'secondary' = 'primary'` — mapea a `.btn`/`.btn2` del prototipo (primary: fondo `brand-acc`, texto blanco; secondary: fondo `brand-card`, borde `brand-line`).
 - `@Input() size: 'default' | 'sm' = 'default'`.
-- `@Input() type: 'button' | 'submit' = 'button'`.
-- `@Input() disabled = false`.
-- Selector de atributo `button[ui-button]` (se aplica sobre un `<button>` nativo, no lo envuelve) para conservar semántica HTML nativa y que `disabled`/`type`/eventos de click sigan siendo los del elemento real.
+- Selector de atributo `button[ui-button]` (se aplica sobre un `<button>` nativo, no lo envuelve) para conservar semántica HTML nativa. `disabled`, `type` y los eventos de click quedan siendo los del elemento real — no se duplican como `@Input()` propios: el consumidor los setea nativos (`<button ui-button type="submit" [disabled]="isLoading">`), evitando que la directiva compita con el binding nativo del mismo atributo.
 
 ### `ui-input` (`shared/components/input/`)
 - Implementa `ControlValueAccessor` (+ `NG_VALUE_ACCESSOR` provider) para usarse directo con `formControlName` en Reactive Forms, consistente con el resto del proyecto.
@@ -81,9 +79,9 @@ Cada uno en su carpeta (`button/`, `input/`, `table/`, `card/`, `modal/`, `badge
 - `@Input() variant: 'success' | 'warning' | 'error' | 'neutral' | 'accent' = 'neutral'`.
 - `<ng-content>` para el texto. Pill (`rounded-full`), padding chico, texto 11px/600 igual al prototipo.
 
-## Migración del login existente
+## Rama base y migración del login (nota de dependencia)
 
-`core/login/login.component.html` se reescribe usando `ui-input` (2x, con `formControlName`) y `ui-button[variant=primary]`, envuelto en `ui-card`, sobre fondo `brand-bg`. Es el primer caso de uso real del kit y deja una sola identidad visual consistente en todo el frontend (en vez de convivir gris/azul viejo + kit nuevo).
+`feature/ui-kit-base` sale de `main` (regla del roadmap: todas las ramas salen de `main`). Hoy `main` solo tiene FE-1.1 mergeado — FE-1.2 (`feature/core-auth`, `core/login/`) todavía tiene el PR pendiente. Por eso la migración de `login.component.html` a los componentes del kit **no** es parte de este plan: `core/login/` no existe todavía en la base de esta rama, y además el roadmap le asigna a FE-1.3 el alcance de archivos `frontend/shared/` únicamente. Queda como follow-up de una línea (cambiar 3 tags en el template) una vez que FE-1.2 esté mergeado a `main` — no bloquea ni necesita re-diseño, los componentes del kit ya están pensados para ese reemplazo directo (`ui-card` envolviendo el form, `ui-input` con `formControlName`, `button[ui-button]` en el submit).
 
 ## Fuera de alcance
 
