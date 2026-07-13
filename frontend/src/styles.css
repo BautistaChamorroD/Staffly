@@ -1,3 +1,31 @@
-/* You can add global styles to this file, and also import other style files */
-
 @import 'tailwindcss';
+
+@theme {
+  --color-brand-acc: #0e8f78;
+  --color-brand-acc-dark: #0a6e5c;
+  --color-brand-acc-soft: #e0f2ed;
+  --color-brand-acc-ink: #0a5c4e;
+  --color-brand-bg: #f6f4f1;
+  --color-brand-card: #fffdfa;
+  --color-brand-ink: #22201c;
+  --color-brand-muted: #8a8378;
+  --color-brand-line: #e7e2da;
+
+  --color-badge-success-bg: #e3f2e5;
+  --color-badge-success-ink: #2e6b39;
+  --color-badge-warning-bg: #fdf0dc;
+  --color-badge-warning-ink: #96660f;
+  --color-badge-error-bg: #fbe7e8;
+  --color-badge-error-ink: #a63641;
+  --color-badge-neutral-bg: #efece6;
+  --color-badge-neutral-ink: #6d675d;
+
+  --font-heading: 'Sora', sans-serif;
+  --font-sans: 'Albert Sans', system-ui, sans-serif;
+}
+
+body {
+  background-color: var(--color-brand-bg);
+  color: var(--color-brand-ink);
+  font-family: var(--font-sans);
+}
