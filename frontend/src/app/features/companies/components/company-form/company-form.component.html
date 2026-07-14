@@ -1,0 +1,43 @@
+<form [formGroup]="form" (ngSubmit)="onSubmit()" class="space-y-4">
+  <ui-input
+    label="Nombre"
+    formControlName="nombre"
+    [errorMessage]="nombreCtrl.invalid && nombreCtrl.touched ? 'El nombre es requerido.' : undefined"
+  ></ui-input>
+  <ui-input
+    label="Razón social"
+    formControlName="razonSocial"
+    [errorMessage]="razonSocialCtrl.invalid && razonSocialCtrl.touched ? 'La razón social es requerida.' : undefined"
+  ></ui-input>
+  <ui-input
+    label="País"
+    formControlName="pais"
+    [errorMessage]="paisCtrl.invalid && paisCtrl.touched ? 'El país es requerido.' : undefined"
+  ></ui-input>
+  <ui-input
+    label="Moneda"
+    formControlName="moneda"
+    [errorMessage]="monedaCtrl.invalid && monedaCtrl.touched ? 'La moneda es requerida.' : undefined"
+  ></ui-input>
+  <ui-input
+    label="Zona horaria"
+    formControlName="zonaHoraria"
+    [errorMessage]="zonaHorariaCtrl.invalid && zonaHorariaCtrl.touched ? 'La zona horaria es requerida.' : undefined"
+  ></ui-input>
+  <ui-input label="Plan (opcional)" formControlName="plan"></ui-input>
+  @if (mode === 'create') {
+    <ui-input
+      label="Email del admin"
+      type="email"
+      formControlName="adminEmail"
+      [errorMessage]="adminEmailErrorMessage"
+    ></ui-input>
+  }
+  <button ui-button type="submit" class="w-full">
+    @if (mode === 'create') {
+      Crear empresa
+    } @else {
+      Guardar cambios
+    }
+  </button>
+</form>
