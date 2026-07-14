@@ -19,6 +19,7 @@ export class InputComponent implements ControlValueAccessor {
   @Input() label = '';
   @Input() type = 'text';
   @Input() placeholder = '';
+  @Input() autocomplete?: string;
   @Input() errorMessage?: string;
 
   readonly id = `ui-input-${nextInputId++}`;

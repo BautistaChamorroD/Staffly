@@ -5,11 +5,14 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 
 import { AuthService } from '../services/auth.service';
+import { ButtonDirective } from '../../shared/components/button/button.directive';
+import { CardComponent } from '../../shared/components/card/card.component';
+import { InputComponent } from '../../shared/components/input/input.component';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, CardComponent, InputComponent, ButtonDirective],
   templateUrl: './login.component.html',
 })
 export class LoginComponent {
@@ -32,6 +35,25 @@ export class LoginComponent {
 
   get passwordCtrl() {
     return this.form.get('password')!;
+  }
+
+  get emailErrorMessage(): string | undefined {
+    if (!this.emailCtrl.invalid || !this.emailCtrl.touched) {
+      return undefined;
+    }
+    if (this.emailCtrl.errors?.['required']) {
+      return 'El email es requerido.';
+    }
+    if (this.emailCtrl.errors?.['email']) {
+      return 'Ingresá un email válido.';
+    }
+    return undefined;
+  }
+
+  get passwordErrorMessage(): string | undefined {
+    return this.passwordCtrl.invalid && this.passwordCtrl.touched
+      ? 'La contraseña es requerida.'
+      : undefined;
   }
 
   onSubmit(): void {
