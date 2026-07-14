@@ -1,0 +1,89 @@
+<main class="mx-auto max-w-5xl px-4 py-8">
+  <div class="mb-4 flex items-center justify-between">
+    <h1 class="font-heading text-2xl font-bold text-brand-ink">Empresas</h1>
+    <button ui-button type="button" (click)="openCreateModal()">+ Nueva empresa</button>
+  </div>
+
+  @if (loading) {
+    <p class="text-sm text-brand-muted">Cargando empresas...</p>
+  } @else if (loadError) {
+    <p class="rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ loadError }}</p>
+  } @else if (companies.length === 0) {
+    <p class="text-sm text-brand-muted">Todavía no hay empresas cargadas.</p>
+  } @else {
+    <ui-table>
+      <thead>
+        <tr>
+          <th class="px-3 py-2 text-left text-xs font-semibold uppercase text-brand-muted">Nombre</th>
+          <th class="px-3 py-2 text-left text-xs font-semibold uppercase text-brand-muted">País</th>
+          <th class="px-3 py-2 text-left text-xs font-semibold uppercase text-brand-muted">Plan</th>
+          <th class="px-3 py-2 text-left text-xs font-semibold uppercase text-brand-muted">Estado</th>
+          <th class="px-3 py-2 text-left text-xs font-semibold uppercase text-brand-muted">Alta</th>
+          <th class="px-3 py-2"></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (company of companies; track company.id) {
+          <tr class="border-b border-brand-line">
+            <td class="px-3 py-2">{{ company.nombre }}</td>
+            <td class="px-3 py-2">{{ company.pais }}</td>
+            <td class="px-3 py-2">{{ company.plan || '—' }}</td>
+            <td class="px-3 py-2">
+              <ui-badge [variant]="company.estado === 'ACTIVA' ? 'success' : 'error'">{{ company.estado }}</ui-badge>
+            </td>
+            <td class="px-3 py-2">{{ company.fechaAlta | date: 'dd/MM/yyyy' }}</td>
+            <td class="px-3 py-2 text-right">
+              <button ui-button variant="secondary" size="sm" type="button" (click)="openEditModal(company)">
+                Editar
+              </button>
+              <button ui-button variant="secondary" size="sm" type="button" (click)="openStatusConfirm(company)">
+                @if (company.estado === 'ACTIVA') {
+                  Suspender
+                } @else {
+                  Activar
+                }
+              </button>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </ui-table>
+  }
+</main>
+
+@if (formMode) {
+  <ui-modal [title]="formMode === 'create' ? 'Nueva empresa' : 'Editar empresa'" (closed)="closeFormModal()">
+    @if (formError) {
+      <p class="mb-4 rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ formError }}</p>
+    }
+    <app-company-form [mode]="formMode" [initialValue]="formInitialValue" (submitted)="handleFormSubmit($event)">
+    </app-company-form>
+  </ui-modal>
+}
+
+@if (createdModal) {
+  <app-company-created-modal
+    [adminEmail]="createdModal.adminEmail"
+    [temporaryPassword]="createdModal.temporaryPassword"
+    (closed)="closeCreatedModal()"
+  ></app-company-created-modal>
+}
+
+@if (statusTarget) {
+  <ui-modal title="Confirmar cambio de estado" (closed)="closeStatusConfirm()">
+    @if (statusError) {
+      <p class="mb-4 rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ statusError }}</p>
+    }
+    <p class="text-sm text-brand-ink">
+      @if (statusTarget.estado === 'ACTIVA') {
+        ¿Confirmás suspender <strong>{{ statusTarget.nombre }}</strong>?
+      } @else {
+        ¿Confirmás activar <strong>{{ statusTarget.nombre }}</strong>?
+      }
+    </p>
+    <div class="mt-6 flex justify-end gap-2">
+      <button ui-button variant="secondary" type="button" (click)="closeStatusConfirm()">Cancelar</button>
+      <button ui-button type="button" (click)="confirmStatusChange()">Confirmar</button>
+    </div>
+  </ui-modal>
+}
