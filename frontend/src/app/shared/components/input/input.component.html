@@ -6,6 +6,7 @@
     [placeholder]="placeholder"
     [value]="value"
     [disabled]="disabled"
+    [attr.autocomplete]="autocomplete"
     (input)="handleInput($any($event.target).value)"
     (blur)="handleBlur()"
     [attr.aria-describedby]="errorMessage ? id + '-error' : null"

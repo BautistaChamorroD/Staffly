@@ -9,13 +9,19 @@ import { InputComponent } from './input.component';
   imports: [ReactiveFormsModule, InputComponent],
   template: `
     <form [formGroup]="form">
-      <ui-input formControlName="email" label="Email" [errorMessage]="error"></ui-input>
+      <ui-input
+        formControlName="email"
+        label="Email"
+        [errorMessage]="error"
+        [autocomplete]="autocomplete"
+      ></ui-input>
     </form>
   `,
 })
 class HostComponent {
   form = new FormGroup({ email: new FormControl('') });
   error?: string;
+  autocomplete?: string;
 }
 
 describe('InputComponent', () => {
@@ -80,5 +86,13 @@ describe('InputComponent', () => {
     input.dispatchEvent(new Event('blur'));
     fixture.detectChanges();
     expect(fixture.componentInstance.form.get('email')!.touched).toBe(true);
+  });
+
+  it('forwards the autocomplete input to the native input attribute', () => {
+    const fixture = TestBed.createComponent(HostComponent);
+    fixture.componentInstance.autocomplete = 'username';
+    fixture.detectChanges();
+    const input = fixture.nativeElement.querySelector('input') as HTMLInputElement;
+    expect(input.getAttribute('autocomplete')).toBe('username');
   });
 });
