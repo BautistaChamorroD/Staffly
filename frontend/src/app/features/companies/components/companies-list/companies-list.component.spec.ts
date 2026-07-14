@@ -39,21 +39,21 @@ describe('CompaniesListComponent', () => {
     });
   });
 
-  it('shows the loaded companies in the table', async () => {
+  it('shows the loaded companies in the table', () => {
     const fixture = TestBed.createComponent(CompaniesListComponent);
-    await fixture.whenStable();
+    fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Heladería Lucca');
   });
 
-  it('shows a loading error banner when the list request fails', async () => {
+  it('shows a loading error banner when the list request fails', () => {
     companyServiceStub.list.mockReturnValue(throwError(() => new Error('network error')));
     const fixture = TestBed.createComponent(CompaniesListComponent);
-    await fixture.whenStable();
+    fixture.detectChanges();
     const alert = fixture.nativeElement.querySelector('[role="alert"]');
     expect(alert?.textContent).toContain('No se pudo cargar');
   });
 
-  it('opens the create modal, and on successful submit shows the created-password modal and refreshes the list', async () => {
+  it('opens the create modal, and on successful submit shows the created-password modal and refreshes the list', () => {
     const createResponse: CreateCompanyResponse = {
       company: { ...mockCompany, id: '2', nombre: 'Nueva Empresa' },
       adminEmail: 'admin@nueva.com',
@@ -62,10 +62,10 @@ describe('CompaniesListComponent', () => {
     companyServiceStub.create.mockReturnValue(of(createResponse));
 
     const fixture = TestBed.createComponent(CompaniesListComponent);
-    await fixture.whenStable();
+    fixture.detectChanges();
 
     fixture.componentInstance.openCreateModal();
-    await fixture.whenStable();
+    fixture.detectChanges();
     expect(fixture.componentInstance.formMode).toBe('create');
 
     fixture.componentInstance.handleFormSubmit({
@@ -77,7 +77,7 @@ describe('CompaniesListComponent', () => {
       plan: '',
       adminEmail: 'admin@nueva.com',
     });
-    await fixture.whenStable();
+    fixture.detectChanges();
 
     expect(companyServiceStub.create).toHaveBeenCalled();
     expect(fixture.componentInstance.formMode).toBeNull();
@@ -88,13 +88,13 @@ describe('CompaniesListComponent', () => {
     expect(companyServiceStub.list).toHaveBeenCalledTimes(2);
   });
 
-  it('shows a form error banner without closing the modal when create fails', async () => {
+  it('shows a form error banner without closing the modal when create fails', () => {
     companyServiceStub.create.mockReturnValue(throwError(() => new Error('validation error')));
     const fixture = TestBed.createComponent(CompaniesListComponent);
-    await fixture.whenStable();
+    fixture.detectChanges();
 
     fixture.componentInstance.openCreateModal();
-    await fixture.whenStable();
+    fixture.detectChanges();
     fixture.componentInstance.handleFormSubmit({
       nombre: 'X',
       razonSocial: 'X',
@@ -104,15 +104,15 @@ describe('CompaniesListComponent', () => {
       plan: '',
       adminEmail: 'x@x.com',
     });
-    await fixture.whenStable();
+    fixture.detectChanges();
 
     expect(fixture.componentInstance.formMode).toBe('create');
     expect(fixture.componentInstance.formError).toContain('No se pudo crear');
   });
 
-  it('opens the edit modal prefilled with the selected company', async () => {
+  it('opens the edit modal prefilled with the selected company', () => {
     const fixture = TestBed.createComponent(CompaniesListComponent);
-    await fixture.whenStable();
+    fixture.detectChanges();
 
     fixture.componentInstance.openEditModal(mockCompany);
 
@@ -120,10 +120,10 @@ describe('CompaniesListComponent', () => {
     expect(fixture.componentInstance.formInitialValue).toEqual(mockCompany);
   });
 
-  it('opens the status confirmation and applies the opposite estado on confirm', async () => {
+  it('opens the status confirmation and applies the opposite estado on confirm', () => {
     companyServiceStub.updateStatus.mockReturnValue(of({ ...mockCompany, estado: 'SUSPENDIDA' }));
     const fixture = TestBed.createComponent(CompaniesListComponent);
-    await fixture.whenStable();
+    fixture.detectChanges();
 
     fixture.componentInstance.openStatusConfirm(mockCompany);
     expect(fixture.componentInstance.statusTarget).toEqual(mockCompany);

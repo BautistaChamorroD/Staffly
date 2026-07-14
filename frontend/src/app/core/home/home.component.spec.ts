@@ -5,7 +5,7 @@ import { AuthService } from '../services/auth.service';
 import { HomeComponent } from './home.component';
 
 describe('HomeComponent', () => {
-  it('redirects a SUPER_ADMIN to /companies', async () => {
+  it('redirects a SUPER_ADMIN to /companies', () => {
     const routerStub = { navigate: vi.fn() };
     const authServiceStub = {
       getRole: () => 'SUPER_ADMIN',
@@ -22,12 +22,12 @@ describe('HomeComponent', () => {
     });
 
     const fixture = TestBed.createComponent(HomeComponent);
-    await fixture.whenStable();
+    fixture.detectChanges();
 
     expect(routerStub.navigate).toHaveBeenCalledWith(['/companies']);
   });
 
-  it('does not redirect a non-SUPER_ADMIN role', async () => {
+  it('does not redirect a non-SUPER_ADMIN role', () => {
     const routerStub = { navigate: vi.fn() };
     const authServiceStub = {
       getRole: () => 'ADMIN',
@@ -44,7 +44,7 @@ describe('HomeComponent', () => {
     });
 
     const fixture = TestBed.createComponent(HomeComponent);
-    await fixture.whenStable();
+    fixture.detectChanges();
 
     expect(routerStub.navigate).not.toHaveBeenCalled();
   });
