@@ -1,0 +1,19 @@
+<div>
+  <label [for]="id" class="mb-1 block text-sm font-medium text-brand-ink">{{ label }}</label>
+  <input
+    [id]="id"
+    [type]="type"
+    [placeholder]="placeholder"
+    [value]="value"
+    [disabled]="disabled"
+    (input)="handleInput($any($event.target).value)"
+    (blur)="handleBlur()"
+    [attr.aria-describedby]="errorMessage ? id + '-error' : null"
+    class="w-full rounded-lg border bg-brand-card px-3 py-2 text-sm text-brand-ink"
+    [class.border-brand-line]="!errorMessage"
+    [class.border-badge-error-ink]="errorMessage"
+  />
+  @if (errorMessage) {
+    <p [id]="id + '-error'" class="mt-1 text-sm text-badge-error-ink" role="alert">{{ errorMessage }}</p>
+  }
+</div>
