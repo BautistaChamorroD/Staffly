@@ -1,0 +1,25 @@
+<ui-modal title="Empresa creada" (closed)="closed.emit()">
+  <p class="text-sm text-brand-ink">
+    Guardá esta contraseña provisoria ahora — <strong>no se va a volver a mostrar</strong>.
+  </p>
+  <dl class="mt-4 space-y-2 text-sm">
+    <div>
+      <dt class="font-medium text-brand-muted">Email del admin</dt>
+      <dd class="font-mono">{{ adminEmail }}</dd>
+    </div>
+    <div>
+      <dt class="font-medium text-brand-muted">Contraseña provisoria</dt>
+      <dd class="font-mono">{{ temporaryPassword }}</dd>
+    </div>
+  </dl>
+  <div class="mt-6 flex justify-end gap-2">
+    <button ui-button variant="secondary" type="button" (click)="copyPassword()">
+      @if (copied) {
+        Copiado ✓
+      } @else {
+        Copiar contraseña
+      }
+    </button>
+    <button ui-button type="button" (click)="closed.emit()">Entendido</button>
+  </div>
+</ui-modal>

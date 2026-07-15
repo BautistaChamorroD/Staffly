@@ -1,11 +1,20 @@
 import { Routes } from '@angular/router';
 
 import { authGuard } from './core/guards/auth.guard';
+import { roleGuard } from './core/guards/role.guard';
 
 export const routes: Routes = [
   {
     path: 'login',
     loadComponent: () => import('./core/login/login.component').then((m) => m.LoginComponent),
+  },
+  {
+    path: 'companies',
+    canActivate: [roleGuard(['SUPER_ADMIN'])],
+    loadComponent: () =>
+      import('./features/companies/components/companies-list/companies-list.component').then(
+        (m) => m.CompaniesListComponent,
+      ),
   },
   {
     path: '',
