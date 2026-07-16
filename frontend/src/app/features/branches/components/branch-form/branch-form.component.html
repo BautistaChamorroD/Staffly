@@ -1,0 +1,26 @@
+<form [formGroup]="form" (ngSubmit)="onSubmit()" class="space-y-4">
+  <ui-input
+    label="Nombre"
+    formControlName="nombre"
+    [errorMessage]="nombreCtrl.invalid && nombreCtrl.touched ? 'El nombre es requerido.' : undefined"
+  ></ui-input>
+  <ui-input
+    label="Dirección"
+    formControlName="direccion"
+    [errorMessage]="direccionCtrl.invalid && direccionCtrl.touched ? 'La dirección es requerida.' : undefined"
+  ></ui-input>
+  <ui-input
+    label="Zona horaria"
+    formControlName="zonaHoraria"
+    [errorMessage]="zonaHorariaCtrl.invalid && zonaHorariaCtrl.touched ? 'La zona horaria es requerida.' : undefined"
+  ></ui-input>
+  <ui-input label="Horario visible desde (opcional)" type="time" formControlName="horarioVisibleInicio"></ui-input>
+  <ui-input label="Horario visible hasta (opcional)" type="time" formControlName="horarioVisibleFin"></ui-input>
+  <button ui-button type="submit" class="w-full">
+    @if (mode === 'create') {
+      Crear sucursal
+    } @else {
+      Guardar cambios
+    }
+  </button>
+</form>

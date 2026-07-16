@@ -17,6 +17,14 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'branches',
+    canActivate: [roleGuard(['ADMIN', 'RRHH', 'SUPERVISOR'])],
+    loadComponent: () =>
+      import('./features/branches/components/branches-list/branches-list.component').then(
+        (m) => m.BranchesListComponent,
+      ),
+  },
+  {
     path: '',
     canActivate: [authGuard],
     loadComponent: () => import('./core/home/home.component').then((m) => m.HomeComponent),
