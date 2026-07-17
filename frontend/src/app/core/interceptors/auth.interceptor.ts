@@ -22,7 +22,13 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   return next(authorizedReq).pipe(
     catchError((error: unknown) => {
       const isUnauthorized = error instanceof HttpErrorResponse && error.status === 401;
-      if (isPublic || !isUnauthorized || !authService.getRefreshToken()) {
+      // 401 con code INVALID_CREDENTIALS es un fallo de negocio (ej.
+      // contraseña actual incorrecta en change-password), no un token
+      // vencido: refrescar y reintentar terminaría deslogueando al usuario.
+      const isCredentialFailure =
+        error instanceof HttpErrorResponse &&
+        (error.error as { code?: string } | null)?.code === 'INVALID_CREDENTIALS';
+      if (isPublic || !isUnauthorized || isCredentialFailure || !authService.getRefreshToken()) {
         return throwError(() => error);
       }
 
