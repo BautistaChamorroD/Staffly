@@ -81,6 +81,15 @@ describe('EmployeesListComponent', () => {
     expect(alert?.textContent).toContain('No se pudo cargar');
   });
 
+  it('shows a branch loading error banner when the branch list request fails', () => {
+    configure('ADMIN');
+    branchServiceStub.list.mockReturnValue(throwError(() => new Error('network error')));
+    const fixture = TestBed.createComponent(EmployeesListComponent);
+    fixture.detectChanges();
+    const alert = fixture.nativeElement.querySelector('[role="alert"]');
+    expect(alert?.textContent).toContain('No se pudieron cargar las sucursales');
+  });
+
   it('debounces the search filter before calling list again', () => {
     vi.useFakeTimers();
     configure('ADMIN');

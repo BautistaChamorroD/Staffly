@@ -51,6 +51,7 @@ export class EmployeesListComponent implements OnInit {
   branches: Branch[] = [];
   loading = true;
   loadError: string | null = null;
+  branchLoadError: string | null = null;
 
   filterForm = this.fb.group({
     search: [''],
@@ -77,6 +78,9 @@ export class EmployeesListComponent implements OnInit {
     this.branchService.list().subscribe({
       next: (branches) => {
         this.branches = branches;
+      },
+      error: () => {
+        this.branchLoadError = 'No se pudieron cargar las sucursales.';
       },
     });
 
