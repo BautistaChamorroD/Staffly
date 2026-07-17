@@ -1,29 +1,32 @@
 import { Component, Input, forwardRef } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 
-let nextInputId = 0;
+export interface SelectOption {
+  value: string;
+  label: string;
+}
+
+let nextSelectId = 0;
 
 @Component({
-  selector: 'ui-input',
+  selector: 'ui-select',
   standalone: true,
-  templateUrl: './input.component.html',
+  templateUrl: './select.component.html',
   providers: [
     {
       provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => InputComponent),
+      useExisting: forwardRef(() => SelectComponent),
       multi: true,
     },
   ],
 })
-export class InputComponent implements ControlValueAccessor {
+export class SelectComponent implements ControlValueAccessor {
   @Input() label = '';
-  @Input() type = 'text';
-  @Input() placeholder = '';
-  @Input() autocomplete?: string;
-  @Input() step?: string;
+  @Input() options: SelectOption[] = [];
+  @Input() placeholder?: string;
   @Input() errorMessage?: string;
 
-  readonly id = `ui-input-${nextInputId++}`;
+  readonly id = `ui-select-${nextSelectId++}`;
   value = '';
   disabled = false;
 
@@ -46,7 +49,7 @@ export class InputComponent implements ControlValueAccessor {
     this.disabled = isDisabled;
   }
 
-  handleInput(value: string): void {
+  handleChange(value: string): void {
     this.value = value;
     this.onChange(value);
   }

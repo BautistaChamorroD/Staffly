@@ -1,0 +1,110 @@
+<main class="mx-auto max-w-6xl px-4 py-8">
+  <div class="mb-4 flex items-center justify-between">
+    <h1 class="font-heading text-2xl font-bold text-brand-ink">Empleados</h1>
+    @if (canWrite) {
+      <button ui-button type="button" (click)="openCreateModal()">+ Nuevo empleado</button>
+    }
+  </div>
+
+  <form [formGroup]="filterForm" class="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+    <ui-input label="Buscar" placeholder="Nombre o documento" formControlName="search"></ui-input>
+    <ui-select
+      label="Estado laboral"
+      formControlName="estadoLaboral"
+      [options]="estadoLaboralOptions"
+      placeholder="Todos"
+    ></ui-select>
+    <ui-select
+      label="Sucursal"
+      formControlName="branchId"
+      [options]="branchFilterOptions"
+      placeholder="Todas"
+    ></ui-select>
+  </form>
+
+  @if (branchLoadError) {
+    <p class="mb-4 rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ branchLoadError }}</p>
+  }
+
+  @if (loading) {
+    <p class="text-sm text-brand-muted">Cargando empleados...</p>
+  } @else if (loadError) {
+    <p class="rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ loadError }}</p>
+  } @else if (employees.length === 0) {
+    <p class="text-sm text-brand-muted">No se encontraron empleados con estos filtros.</p>
+  } @else {
+    <ui-table>
+      <thead>
+        <tr>
+          <th class="px-3 py-2 text-left text-xs font-semibold uppercase text-brand-muted">Nombre</th>
+          <th class="px-3 py-2 text-left text-xs font-semibold uppercase text-brand-muted">Sucursal(es)</th>
+          <th class="px-3 py-2 text-left text-xs font-semibold uppercase text-brand-muted">Puesto</th>
+          <th class="px-3 py-2 text-left text-xs font-semibold uppercase text-brand-muted">Estado laboral</th>
+          <th class="px-3 py-2 text-left text-xs font-semibold uppercase text-brand-muted">Liquidación</th>
+          @if (canWrite) {
+            <th class="px-3 py-2"></th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        @for (employee of employees; track employee.id) {
+          <tr class="border-b border-brand-line">
+            <td class="px-3 py-2">{{ employee.nombre }} {{ employee.apellido }}</td>
+            <td class="px-3 py-2">{{ branchNames(employee) }}</td>
+            <td class="px-3 py-2">{{ employee.categoria }}</td>
+            <td class="px-3 py-2">
+              <ui-badge [variant]="estadoLaboralVariant(employee.estadoLaboral)">{{ employee.estadoLaboral }}</ui-badge>
+            </td>
+            <td class="px-3 py-2">
+              <ui-badge [variant]="employee.estadoLiquidacion === 'AL_DIA' ? 'success' : 'warning'">
+                {{ employee.estadoLiquidacion }}
+              </ui-badge>
+            </td>
+            @if (canWrite) {
+              <td class="px-3 py-2 text-right">
+                <button ui-button variant="secondary" size="sm" type="button" (click)="openEditModal(employee)">
+                  Editar
+                </button>
+                <button ui-button variant="secondary" size="sm" type="button" (click)="openStatusModal(employee)">
+                  Cambiar estado
+                </button>
+              </td>
+            }
+          </tr>
+        }
+      </tbody>
+    </ui-table>
+  }
+</main>
+
+@if (formMode) {
+  <ui-modal [title]="formMode === 'create' ? 'Nuevo empleado' : 'Editar empleado'" (closed)="closeFormModal()">
+    @if (formError) {
+      <p class="mb-4 rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ formError }}</p>
+    }
+    <app-employee-form
+      [mode]="formMode"
+      [initialValue]="formInitialValue"
+      [branches]="branches"
+      (submitted)="handleFormSubmit($event)"
+    ></app-employee-form>
+  </ui-modal>
+}
+
+@if (statusTarget) {
+  <ui-modal title="Cambiar estado laboral" (closed)="closeStatusModal()">
+    @if (statusError) {
+      <p class="mb-4 rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ statusError }}</p>
+    }
+    <p class="mb-4 text-sm text-brand-ink">
+      Empleado: <strong>{{ statusTarget.nombre }} {{ statusTarget.apellido }}</strong>
+    </p>
+    <form [formGroup]="statusForm">
+      <ui-select label="Nuevo estado" formControlName="estadoLaboral" [options]="estadoLaboralOptions"></ui-select>
+    </form>
+    <div class="mt-6 flex justify-end gap-2">
+      <button ui-button variant="secondary" type="button" (click)="closeStatusModal()">Cancelar</button>
+      <button ui-button type="button" (click)="confirmStatusChange()">Guardar</button>
+    </div>
+  </ui-modal>
+}

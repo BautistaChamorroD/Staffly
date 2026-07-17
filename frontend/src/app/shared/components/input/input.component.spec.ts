@@ -14,6 +14,7 @@ import { InputComponent } from './input.component';
         label="Email"
         [errorMessage]="error"
         [autocomplete]="autocomplete"
+        [step]="step"
       ></ui-input>
     </form>
   `,
@@ -22,6 +23,7 @@ class HostComponent {
   form = new FormGroup({ email: new FormControl('') });
   error?: string;
   autocomplete?: string;
+  step?: string;
 }
 
 describe('InputComponent', () => {
@@ -94,5 +96,13 @@ describe('InputComponent', () => {
     fixture.detectChanges();
     const input = fixture.nativeElement.querySelector('input') as HTMLInputElement;
     expect(input.getAttribute('autocomplete')).toBe('username');
+  });
+
+  it('forwards the step input to the native input attribute', () => {
+    const fixture = TestBed.createComponent(HostComponent);
+    fixture.componentInstance.step = '0.01';
+    fixture.detectChanges();
+    const input = fixture.nativeElement.querySelector('input') as HTMLInputElement;
+    expect(input.getAttribute('step')).toBe('0.01');
   });
 });

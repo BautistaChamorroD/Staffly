@@ -1,0 +1,85 @@
+<form [formGroup]="form" (ngSubmit)="onSubmit()" class="space-y-4">
+  <ui-input
+    label="Nombre"
+    formControlName="nombre"
+    [errorMessage]="nombreCtrl.invalid && nombreCtrl.touched ? 'El nombre es requerido.' : undefined"
+  ></ui-input>
+  <ui-input
+    label="Apellido"
+    formControlName="apellido"
+    [errorMessage]="apellidoCtrl.invalid && apellidoCtrl.touched ? 'El apellido es requerido.' : undefined"
+  ></ui-input>
+  <ui-input
+    label="Documento"
+    formControlName="documento"
+    [errorMessage]="documentoCtrl.invalid && documentoCtrl.touched ? 'El documento es requerido.' : undefined"
+  ></ui-input>
+  <ui-input
+    label="Fecha de nacimiento"
+    type="date"
+    formControlName="fechaNacimiento"
+    [errorMessage]="
+      fechaNacimientoCtrl.invalid && fechaNacimientoCtrl.touched ? 'La fecha de nacimiento es requerida.' : undefined
+    "
+  ></ui-input>
+  <ui-input
+    label="Fecha de ingreso"
+    type="date"
+    formControlName="fechaIngreso"
+    [errorMessage]="fechaIngresoCtrl.invalid && fechaIngresoCtrl.touched ? 'La fecha de ingreso es requerida.' : undefined"
+  ></ui-input>
+  <ui-input label="Fecha de egreso (opcional)" type="date" formControlName="fechaEgreso"></ui-input>
+  <ui-select
+    label="Tipo de contrato"
+    formControlName="tipoContrato"
+    [options]="tipoContratoOptions"
+    placeholder="Seleccionar..."
+    [errorMessage]="tipoContratoCtrl.invalid && tipoContratoCtrl.touched ? 'El tipo de contrato es requerido.' : undefined"
+  ></ui-select>
+  <ui-input
+    label="Puesto"
+    formControlName="categoria"
+    [errorMessage]="categoriaCtrl.invalid && categoriaCtrl.touched ? 'El puesto es requerido.' : undefined"
+  ></ui-input>
+  <ui-input
+    label="Sueldo base"
+    type="number"
+    step="0.01"
+    formControlName="sueldoBase"
+    [errorMessage]="sueldoBaseCtrl.invalid && sueldoBaseCtrl.touched ? 'El sueldo base es requerido.' : undefined"
+  ></ui-input>
+  <ui-input label="Teléfono (opcional)" formControlName="telefono"></ui-input>
+  <ui-input
+    label="Email de contacto (opcional)"
+    type="email"
+    formControlName="emailContacto"
+    [errorMessage]="emailContactoCtrl.invalid && emailContactoCtrl.touched ? 'Ingresá un email válido.' : undefined"
+  ></ui-input>
+
+  <div>
+    <span class="mb-1 block text-sm font-medium text-brand-ink">Sucursales asignadas</span>
+    <div class="space-y-1">
+      @for (branch of branches; track branch.id) {
+        <label class="flex items-center gap-2 text-sm text-brand-ink">
+          <input
+            type="checkbox"
+            [checked]="isBranchSelected(branch.id)"
+            (change)="toggleBranch(branch.id, $any($event.target).checked)"
+          />
+          {{ branch.nombre }}
+        </label>
+      }
+    </div>
+    @if (branchesError) {
+      <p class="mt-1 text-sm text-badge-error-ink" role="alert">Seleccioná al menos una sucursal.</p>
+    }
+  </div>
+
+  <button ui-button type="submit" class="w-full">
+    @if (mode === 'create') {
+      Crear empleado
+    } @else {
+      Guardar cambios
+    }
+  </button>
+</form>
