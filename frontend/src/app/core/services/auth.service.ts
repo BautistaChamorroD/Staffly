@@ -19,11 +19,25 @@ export class AuthService {
   private accessToken: string | null = null;
   private refreshToken: string | null = null;
   private refreshInFlight$: Observable<RefreshResponse> | null = null;
+  private pendingPasswordChange = false;
 
   login(credentials: LoginRequest): Observable<LoginResponse> {
+    return this.http.post<LoginResponse>(`${environment.apiUrl}/auth/login`, credentials).pipe(
+      tap((response) => {
+        this.setTokens(response.accessToken, response.refreshToken);
+        this.pendingPasswordChange = response.user.debeCambiarPassword;
+      }),
+    );
+  }
+
+  changePassword(currentPassword: string, newPassword: string): Observable<void> {
     return this.http
-      .post<LoginResponse>(`${environment.apiUrl}/auth/login`, credentials)
-      .pipe(tap((response) => this.setTokens(response.accessToken, response.refreshToken)));
+      .post<void>(`${environment.apiUrl}/auth/change-password`, { currentPassword, newPassword })
+      .pipe(tap(() => (this.pendingPasswordChange = false)));
+  }
+
+  mustChangePassword(): boolean {
+    return this.pendingPasswordChange;
   }
 
   /**
@@ -72,6 +86,7 @@ export class AuthService {
   clearTokens(): void {
     this.accessToken = null;
     this.refreshToken = null;
+    this.pendingPasswordChange = false;
   }
 
   isLoggedIn(): boolean {
