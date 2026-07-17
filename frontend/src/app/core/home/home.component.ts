@@ -4,10 +4,9 @@ import { Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 
 /**
- * Placeholder temporal de la ruta protegida raíz para roles sin feature
- * propia todavía. Super Admin redirige a /companies (FE-1.4); el resto de
- * los roles sigue viendo este placeholder hasta que existan sus features
- * (branches/employees en FE-1.5/1.6).
+ * Placeholder temporal de la ruta protegida raíz — solo queda para EMPLOYEE,
+ * que todavía no tiene pantalla propia. El resto de los roles redirige a su
+ * feature principal apenas loguea.
  */
 @Component({
   selector: 'app-home',
@@ -24,6 +23,8 @@ export class HomeComponent implements OnInit {
   ngOnInit(): void {
     if (this.rol === 'SUPER_ADMIN') {
       this.router.navigate(['/companies']);
+    } else if (this.rol === 'ADMIN' || this.rol === 'RRHH' || this.rol === 'SUPERVISOR') {
+      this.router.navigate(['/employees']);
     }
   }
 

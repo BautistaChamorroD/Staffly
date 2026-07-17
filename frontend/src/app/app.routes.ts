@@ -25,6 +25,14 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'employees',
+    canActivate: [roleGuard(['ADMIN', 'RRHH', 'SUPERVISOR'])],
+    loadComponent: () =>
+      import('./features/employees/components/employees-list/employees-list.component').then(
+        (m) => m.EmployeesListComponent,
+      ),
+  },
+  {
     path: '',
     canActivate: [authGuard],
     loadComponent: () => import('./core/home/home.component').then((m) => m.HomeComponent),
