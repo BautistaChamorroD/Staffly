@@ -90,6 +90,16 @@ describe('EmployeesListComponent', () => {
     expect(alert?.textContent).toContain('No se pudieron cargar las sucursales');
   });
 
+  it('shows a placeholder in the Sucursal(es) column when branches failed to load', () => {
+    configure('ADMIN');
+    branchServiceStub.list.mockReturnValue(throwError(() => new Error('network error')));
+    const fixture = TestBed.createComponent(EmployeesListComponent);
+    fixture.detectChanges();
+    const firstRow = fixture.nativeElement.querySelector('tbody tr') as HTMLTableRowElement;
+    const branchCell = firstRow.querySelectorAll('td')[1];
+    expect(branchCell.textContent?.trim()).toBe('—');
+  });
+
   it('debounces the search filter before calling list again', () => {
     vi.useFakeTimers();
     configure('ADMIN');
@@ -110,19 +120,49 @@ describe('EmployeesListComponent', () => {
     vi.useRealTimers();
   });
 
-  it('calls list again with the new value when the estadoLaboral filter changes', () => {
-    vi.useFakeTimers();
+  it('calls list immediately (no debounce) when the estadoLaboral filter changes', () => {
     configure('ADMIN');
     const fixture = TestBed.createComponent(EmployeesListComponent);
     fixture.detectChanges();
+    expect(employeeServiceStub.list).toHaveBeenCalledTimes(1);
 
     fixture.componentInstance.filterForm.get('estadoLaboral')!.setValue('BAJA');
-    vi.advanceTimersByTime(300);
+    expect(employeeServiceStub.list).toHaveBeenCalledTimes(2);
     expect(employeeServiceStub.list).toHaveBeenLastCalledWith({
       estadoLaboral: 'BAJA',
       branchId: undefined,
       search: undefined,
     });
+  });
+
+  it('calls list immediately (no debounce) when the branchId filter changes', () => {
+    configure('ADMIN');
+    const fixture = TestBed.createComponent(EmployeesListComponent);
+    fixture.detectChanges();
+    expect(employeeServiceStub.list).toHaveBeenCalledTimes(1);
+
+    fixture.componentInstance.filterForm.get('branchId')!.setValue('branch-1');
+    expect(employeeServiceStub.list).toHaveBeenCalledTimes(2);
+    expect(employeeServiceStub.list).toHaveBeenLastCalledWith({
+      estadoLaboral: undefined,
+      branchId: 'branch-1',
+      search: undefined,
+    });
+  });
+
+  it('does not call list again when the search value does not actually change', () => {
+    vi.useFakeTimers();
+    configure('ADMIN');
+    const fixture = TestBed.createComponent(EmployeesListComponent);
+    fixture.detectChanges();
+
+    fixture.componentInstance.filterForm.get('search')!.setValue('ana');
+    vi.advanceTimersByTime(300);
+    expect(employeeServiceStub.list).toHaveBeenCalledTimes(2);
+
+    fixture.componentInstance.filterForm.get('search')!.setValue('ana');
+    vi.advanceTimersByTime(300);
+    expect(employeeServiceStub.list).toHaveBeenCalledTimes(2);
     vi.useRealTimers();
   });
 

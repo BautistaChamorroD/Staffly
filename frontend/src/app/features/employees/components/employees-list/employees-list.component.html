@@ -50,7 +50,7 @@
         @for (employee of employees; track employee.id) {
           <tr class="border-b border-brand-line">
             <td class="px-3 py-2">{{ employee.nombre }} {{ employee.apellido }}</td>
-            <td class="px-3 py-2">{{ branchNames(employee) }}</td>
+            <td class="px-3 py-2">{{ branchNames(employee) || '—' }}</td>
             <td class="px-3 py-2">{{ employee.categoria }}</td>
             <td class="px-3 py-2">
               <ui-badge [variant]="estadoLaboralVariant(employee.estadoLaboral)">{{ employee.estadoLaboral }}</ui-badge>

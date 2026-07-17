@@ -1,7 +1,7 @@
 import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
-import { debounceTime } from 'rxjs';
+import { debounceTime, distinctUntilChanged, merge } from 'rxjs';
 
 import { AuthService } from '../../../../core/services/auth.service';
 import { BadgeComponent, BadgeVariant } from '../../../../shared/components/badge/badge.component';
@@ -86,8 +86,13 @@ export class EmployeesListComponent implements OnInit {
 
     this.loadEmployees();
 
-    this.filterForm.valueChanges
-      .pipe(debounceTime(300), takeUntilDestroyed(this.destroyRef))
+    this.filterForm
+      .get('search')!
+      .valueChanges.pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.loadEmployees());
+
+    merge(this.filterForm.get('estadoLaboral')!.valueChanges, this.filterForm.get('branchId')!.valueChanges)
+      .pipe(distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.loadEmployees());
   }
 
@@ -144,7 +149,7 @@ export class EmployeesListComponent implements OnInit {
     this.formMode = null;
   }
 
-  private toRequest(value: EmployeeFormValue): CreateEmployeeRequest {
+  private toEmployeePayload(value: EmployeeFormValue): CreateEmployeeRequest {
     return {
       nombre: value.nombre,
       apellido: value.apellido,
@@ -163,7 +168,7 @@ export class EmployeesListComponent implements OnInit {
 
   handleFormSubmit(value: EmployeeFormValue): void {
     this.formError = null;
-    const request = this.toRequest(value);
+    const request = this.toEmployeePayload(value);
 
     if (this.formMode === 'create') {
       this.employeeService.create(request).subscribe({
