@@ -31,9 +31,25 @@ class HostComponent {
   error?: string;
 }
 
+@Component({
+  standalone: true,
+  imports: [ReactiveFormsModule, SelectComponent],
+  template: `
+    <form [formGroup]="form">
+      <ui-select formControlName="choice" label="Elegí" [options]="options"></ui-select>
+    </form>
+  `,
+})
+class HostComponentWithInitialValue {
+  form = new FormGroup({ choice: new FormControl('B') });
+  options = testOptions;
+}
+
 describe('SelectComponent', () => {
   beforeEach(async () => {
-    await TestBed.configureTestingModule({ imports: [HostComponent] }).compileComponents();
+    await TestBed.configureTestingModule({
+      imports: [HostComponent, HostComponentWithInitialValue],
+    }).compileComponents();
   });
 
   it('renders the given options', () => {
@@ -78,5 +94,20 @@ describe('SelectComponent', () => {
     fixture.detectChanges();
     const alert = fixture.nativeElement.querySelector('[role="alert"]') as HTMLElement;
     expect(alert.textContent?.trim()).toBe('Campo requerido.');
+  });
+
+  it('selects the correct option on the very first change detection when the initial form value is not the first option', () => {
+    const fixture = TestBed.createComponent(HostComponentWithInitialValue);
+    fixture.detectChanges();
+    const select = fixture.nativeElement.querySelector('select') as HTMLSelectElement;
+    expect(select.value).toBe('B');
+  });
+
+  it('does not auto-select the first real option on the very first change detection when the initial value is empty and a placeholder is set', () => {
+    const fixture = TestBed.createComponent(HostComponent);
+    fixture.componentInstance.placeholder = 'Seleccionar...';
+    fixture.detectChanges();
+    const select = fixture.nativeElement.querySelector('select') as HTMLSelectElement;
+    expect(select.value).toBe('');
   });
 });
