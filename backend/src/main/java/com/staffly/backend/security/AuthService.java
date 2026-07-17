@@ -1,5 +1,8 @@
 package com.staffly.backend.security;
 
+import com.staffly.backend.company.CompanyRepository;
+import com.staffly.backend.company.EstadoEmpresa;
+import com.staffly.backend.platform.EstadoPlatformAdmin;
 import com.staffly.backend.platform.PlatformAdmin;
 import com.staffly.backend.platform.PlatformAdminRepository;
 import com.staffly.backend.security.dto.ChangePasswordRequest;
@@ -26,6 +29,7 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final PlatformAdminRepository platformAdminRepository;
+    private final CompanyRepository companyRepository;
     private final RevokedTokenRepository revokedTokenRepository;
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
@@ -34,12 +38,14 @@ public class AuthService {
     public AuthService(
             UserRepository userRepository,
             PlatformAdminRepository platformAdminRepository,
+            CompanyRepository companyRepository,
             RevokedTokenRepository revokedTokenRepository,
             JwtService jwtService,
             PasswordEncoder passwordEncoder,
             @Value("${staffly.security.jwt.access-token-minutes}") long accessTokenMinutes) {
         this.userRepository = userRepository;
         this.platformAdminRepository = platformAdminRepository;
+        this.companyRepository = companyRepository;
         this.revokedTokenRepository = revokedTokenRepository;
         this.jwtService = jwtService;
         this.passwordEncoder = passwordEncoder;
@@ -65,6 +71,9 @@ public class AuthService {
         if (user.getEstado() != EstadoUsuario.ACTIVO || !passwordEncoder.matches(password, user.getPasswordHash())) {
             throw new InvalidCredentialsException();
         }
+        if (!isCompanyActive(user.getCompanyId())) {
+            throw new InvalidCredentialsException();
+        }
 
         List<UUID> branchIds = user.getBranches().stream().map(b -> b.getId()).collect(Collectors.toList());
         StafflyUserPrincipal principal = new StafflyUserPrincipal(
@@ -75,7 +84,8 @@ public class AuthService {
     }
 
     private LoginResponse loginAsPlatformAdmin(PlatformAdmin platformAdmin, String password) {
-        if (!passwordEncoder.matches(password, platformAdmin.getPasswordHash())) {
+        if (platformAdmin.getEstado() != EstadoPlatformAdmin.ACTIVO
+                || !passwordEncoder.matches(password, platformAdmin.getPasswordHash())) {
             throw new InvalidCredentialsException();
         }
 
@@ -95,10 +105,44 @@ public class AuthService {
     @Transactional
     public RefreshResponse refresh(String refreshToken) {
         StafflyUserPrincipal principal = validateAndConsumeRefreshToken(refreshToken);
+        ensureAccountStillActive(principal);
 
         String newAccessToken = jwtService.generateAccessToken(principal);
         String newRefreshToken = jwtService.generateRefreshToken(principal);
         return new RefreshResponse(newAccessToken, newRefreshToken, accessTokenMinutes * 60);
+    }
+
+    /**
+     * El refresh token es válido por días: los claims pueden describir una
+     * cuenta que ya fue desactivada, o una empresa suspendida, después de
+     * emitido. Se revalida contra la DB en cada refresh — sin esto,
+     * desactivar un usuario no le corta la sesión (puede encadenar refresh
+     * indefinidamente con tokens que solo se verifican por firma).
+     */
+    private void ensureAccountStillActive(StafflyUserPrincipal principal) {
+        if (principal.getRol() == Rol.SUPER_ADMIN) {
+            PlatformAdmin platformAdmin = platformAdminRepository.findById(principal.getUserId())
+                    .orElseThrow(() -> new InvalidTokenException("La cuenta ya no existe"));
+            if (platformAdmin.getEstado() != EstadoPlatformAdmin.ACTIVO) {
+                throw new InvalidTokenException("La cuenta está desactivada");
+            }
+            return;
+        }
+
+        User user = userRepository.findById(principal.getUserId())
+                .orElseThrow(() -> new InvalidTokenException("La cuenta ya no existe"));
+        if (user.getEstado() != EstadoUsuario.ACTIVO) {
+            throw new InvalidTokenException("La cuenta está desactivada");
+        }
+        if (!isCompanyActive(user.getCompanyId())) {
+            throw new InvalidTokenException("La empresa está suspendida");
+        }
+    }
+
+    private boolean isCompanyActive(UUID companyId) {
+        return companyRepository.findById(companyId)
+                .map(company -> company.getEstado() == EstadoEmpresa.ACTIVA)
+                .orElse(false);
     }
 
     @Transactional
@@ -152,6 +196,12 @@ public class AuthService {
     }
 
     private void revokeToken(Claims claims) {
+        // Purga oportunista: un jti expirado ya no puede usarse (el parseo
+        // del JWT rechaza tokens vencidos antes de llegar acá), así que
+        // conservarlo en la tabla no aporta nada — se limpia en cada
+        // revocación para que la tabla no crezca indefinidamente.
+        revokedTokenRepository.deleteByExpiraEnBefore(Instant.now());
+
         UUID jti = jwtService.getJti(claims);
         Instant expiraEn = claims.getExpiration().toInstant();
         revokedTokenRepository.save(new RevokedToken(jti, expiraEn));
