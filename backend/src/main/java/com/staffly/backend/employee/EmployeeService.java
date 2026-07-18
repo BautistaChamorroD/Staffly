@@ -2,6 +2,8 @@ package com.staffly.backend.employee;
 
 import com.staffly.backend.branch.Branch;
 import com.staffly.backend.branch.BranchRepository;
+import com.staffly.backend.common.BadRequestException;
+import com.staffly.backend.common.ConflictException;
 import com.staffly.backend.common.ResourceNotFoundException;
 import com.staffly.backend.employee.dto.CreateEmployeeRequest;
 import com.staffly.backend.employee.dto.EmployeeResponse;
@@ -11,9 +13,13 @@ import com.staffly.backend.security.Rol;
 import com.staffly.backend.security.StafflyUserPrincipal;
 import com.staffly.backend.user.User;
 import com.staffly.backend.user.UserRepository;
+import jakarta.persistence.criteria.Predicate;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -35,17 +41,47 @@ public class EmployeeService {
 
     @Transactional(readOnly = true)
     public List<EmployeeResponse> list(EstadoLaboral estadoLaboral, UUID branchId, String search, StafflyUserPrincipal principal) {
-        String normalizedSearch = search != null ? search.toLowerCase() : null;
-        return employeeRepository.findAll().stream()
-                .filter(e -> isInScope(e, principal))
-                .filter(e -> estadoLaboral == null || e.getEstadoLaboral() == estadoLaboral)
-                .filter(e -> branchId == null || e.getBranches().stream().anyMatch(b -> b.getId().equals(branchId)))
-                .filter(e -> normalizedSearch == null
-                        || e.getNombre().toLowerCase().contains(normalizedSearch)
-                        || e.getApellido().toLowerCase().contains(normalizedSearch)
-                        || e.getDocumento().toLowerCase().contains(normalizedSearch))
+        if (principal.getRol() == Rol.SUPERVISOR && principal.getBranchIds().isEmpty()) {
+            // sin sucursales asignadas no hay nada visible — y evita un
+            // IN () vacío inválido en SQL
+            return List.of();
+        }
+        return employeeRepository.findAll(listSpecification(estadoLaboral, branchId, search, principal)).stream()
                 .map(EmployeeResponse::from)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Todos los filtros del listado resueltos en SQL (antes: findAll() +
+     * filtrado en memoria, que cargaba la tabla entera por request). El
+     * tenantFilter de Hibernate también aplica; el predicado por companyId
+     * queda además explícito como doble defensa, igual que en los lookups.
+     */
+    private Specification<Employee> listSpecification(
+            EstadoLaboral estadoLaboral, UUID branchId, String search, StafflyUserPrincipal principal) {
+        return (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.equal(root.get("companyId"), principal.getCompanyId()));
+            if (estadoLaboral != null) {
+                predicates.add(cb.equal(root.get("estadoLaboral"), estadoLaboral));
+            }
+            if (branchId != null) {
+                predicates.add(cb.equal(root.join("branches").get("id"), branchId));
+                query.distinct(true);
+            }
+            if (search != null && !search.isBlank()) {
+                String pattern = "%" + search.toLowerCase() + "%";
+                predicates.add(cb.or(
+                        cb.like(cb.lower(root.get("nombre")), pattern),
+                        cb.like(cb.lower(root.get("apellido")), pattern),
+                        cb.like(cb.lower(root.get("documento")), pattern)));
+            }
+            if (principal.getRol() == Rol.SUPERVISOR) {
+                predicates.add(root.join("branches").get("id").in(principal.getBranchIds()));
+                query.distinct(true);
+            }
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
     }
 
     @Transactional(readOnly = true)
@@ -66,6 +102,11 @@ public class EmployeeService {
 
     @Transactional
     public EmployeeResponse create(CreateEmployeeRequest request, StafflyUserPrincipal principal) {
+        if (employeeRepository.existsByCompanyIdAndDocumento(principal.getCompanyId(), request.documento())) {
+            throw new ConflictException("Ya existe un empleado con ese documento");
+        }
+        validarFechas(request.fechaIngreso(), request.fechaEgreso());
+
         Employee employee = new Employee();
         employee.setCompanyId(principal.getCompanyId());
         employee.setNombre(request.nombre());
@@ -89,6 +130,19 @@ public class EmployeeService {
     @Transactional
     public EmployeeResponse update(UUID id, UpdateEmployeeRequest request, StafflyUserPrincipal principal) {
         Employee employee = findEmployeeOrThrow(id, principal);
+
+        if (request.documento() != null
+                && !request.documento().equals(employee.getDocumento())
+                && employeeRepository.existsByCompanyIdAndDocumentoAndIdNot(
+                        principal.getCompanyId(), request.documento(), employee.getId())) {
+            throw new ConflictException("Ya existe un empleado con ese documento");
+        }
+        // valida contra el valor entrante o el guardado, según qué llegue:
+        // un PATCH con solo fechaEgreso también debe respetar la fechaIngreso
+        // ya persistida
+        LocalDate fechaIngresoFinal = request.fechaIngreso() != null ? request.fechaIngreso() : employee.getFechaIngreso();
+        LocalDate fechaEgresoFinal = request.fechaEgreso() != null ? request.fechaEgreso() : employee.getFechaEgreso();
+        validarFechas(fechaIngresoFinal, fechaEgresoFinal);
 
         if (request.nombre() != null) {
             employee.setNombre(request.nombre());
@@ -145,6 +199,12 @@ public class EmployeeService {
         // endpoint queda estable desde ya; cuando exista, esto pasa a
         // consultar el historial real en vez de devolver vacío.
         return List.of();
+    }
+
+    private void validarFechas(LocalDate fechaIngreso, LocalDate fechaEgreso) {
+        if (fechaEgreso != null && fechaEgreso.isBefore(fechaIngreso)) {
+            throw new BadRequestException("La fecha de egreso no puede ser anterior a la fecha de ingreso");
+        }
     }
 
     private Set<Branch> resolveBranches(List<UUID> branchIds, UUID companyId) {

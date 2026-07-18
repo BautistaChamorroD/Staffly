@@ -3,6 +3,7 @@ package com.staffly.backend.common;
 import com.staffly.backend.security.InvalidCredentialsException;
 import com.staffly.backend.security.InvalidTokenException;
 import io.jsonwebtoken.JwtException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -55,6 +56,24 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiError> handleConflict(ConflictException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(ApiError.of("CONFLICT", ex.getMessage()));
+    }
+
+    @ExceptionHandler(BadRequestException.class)
+    public ResponseEntity<ApiError> handleBadRequest(BadRequestException ex) {
+        return ResponseEntity.badRequest()
+                .body(ApiError.of("VALIDATION_ERROR", ex.getMessage()));
+    }
+
+    /**
+     * Red de seguridad para constraints de la base (UNIQUE, FK) que una
+     * carrera entre dos requests puede violar aunque el servicio haya
+     * chequeado antes: mejor un 409 genérico que un 500. No se expone
+     * ex.getMessage() — trae detalle interno del constraint/SQL.
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiError> handleDataIntegrity(DataIntegrityViolationException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiError.of("CONFLICT", "El dato entra en conflicto con un registro existente"));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
