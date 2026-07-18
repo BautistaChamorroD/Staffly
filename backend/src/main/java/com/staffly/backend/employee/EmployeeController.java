@@ -1,6 +1,7 @@
 package com.staffly.backend.employee;
 
 import com.staffly.backend.employee.dto.CreateEmployeeRequest;
+import com.staffly.backend.employee.dto.EmployeeHistoryEntry;
 import com.staffly.backend.employee.dto.EmployeeResponse;
 import com.staffly.backend.employee.dto.UpdateEmployeeRequest;
 import com.staffly.backend.employee.dto.UpdateEmployeeStatusRequest;
@@ -57,7 +58,7 @@ public class EmployeeController {
 
     @GetMapping("/{id}/history")
     @PreAuthorize("hasAnyRole('ADMIN', 'RRHH')")
-    public ResponseEntity<List<Object>> history(
+    public ResponseEntity<List<EmployeeHistoryEntry>> history(
             @PathVariable UUID id, @AuthenticationPrincipal StafflyUserPrincipal principal) {
         return ResponseEntity.ok(employeeService.getHistory(id, principal));
     }

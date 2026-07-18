@@ -5,7 +5,10 @@ import com.staffly.backend.branch.BranchRepository;
 import com.staffly.backend.common.BadRequestException;
 import com.staffly.backend.common.ConflictException;
 import com.staffly.backend.common.ResourceNotFoundException;
+import com.staffly.backend.common.audit.AuditLogRepository;
+import com.staffly.backend.common.audit.AuditableFieldChangedEvent;
 import com.staffly.backend.employee.dto.CreateEmployeeRequest;
+import com.staffly.backend.employee.dto.EmployeeHistoryEntry;
 import com.staffly.backend.employee.dto.EmployeeResponse;
 import com.staffly.backend.employee.dto.UpdateEmployeeRequest;
 import com.staffly.backend.employee.dto.UpdateEmployeeStatusRequest;
@@ -14,10 +17,12 @@ import com.staffly.backend.security.StafflyUserPrincipal;
 import com.staffly.backend.user.User;
 import com.staffly.backend.user.UserRepository;
 import jakarta.persistence.criteria.Predicate;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -29,14 +34,26 @@ import java.util.stream.Collectors;
 @Service
 public class EmployeeService {
 
+    /** Discriminador de Employee en la tabla genérica audit_log. */
+    static final String AUDIT_ENTITY_TYPE = "EMPLOYEE";
+
     private final EmployeeRepository employeeRepository;
     private final BranchRepository branchRepository;
     private final UserRepository userRepository;
+    private final AuditLogRepository auditLogRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
-    public EmployeeService(EmployeeRepository employeeRepository, BranchRepository branchRepository, UserRepository userRepository) {
+    public EmployeeService(
+            EmployeeRepository employeeRepository,
+            BranchRepository branchRepository,
+            UserRepository userRepository,
+            AuditLogRepository auditLogRepository,
+            ApplicationEventPublisher eventPublisher) {
         this.employeeRepository = employeeRepository;
         this.branchRepository = branchRepository;
         this.userRepository = userRepository;
+        this.auditLogRepository = auditLogRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional(readOnly = true)
@@ -165,10 +182,16 @@ public class EmployeeService {
         if (request.tipoContrato() != null) {
             employee.setTipoContrato(request.tipoContrato());
         }
-        if (request.categoria() != null) {
+        // categoria y sueldoBase son los campos con historial (RF-06):
+        // solo se registran cuando el valor realmente cambia
+        if (request.categoria() != null && !request.categoria().equals(employee.getCategoria())) {
+            publishFieldChange(employee, principal, "categoria", employee.getCategoria(), request.categoria());
             employee.setCategoria(request.categoria());
         }
-        if (request.sueldoBase() != null) {
+        if (request.sueldoBase() != null && request.sueldoBase().compareTo(employee.getSueldoBase()) != 0) {
+            publishFieldChange(
+                    employee, principal, "sueldoBase",
+                    formatMonto(employee.getSueldoBase()), formatMonto(request.sueldoBase()));
             employee.setSueldoBase(request.sueldoBase());
         }
         if (request.telefono() != null) {
@@ -188,17 +211,36 @@ public class EmployeeService {
     @Transactional
     public EmployeeResponse updateStatus(UUID id, UpdateEmployeeStatusRequest request, StafflyUserPrincipal principal) {
         Employee employee = findEmployeeOrThrow(id, principal);
-        employee.setEstadoLaboral(request.estadoLaboral());
+        if (request.estadoLaboral() != employee.getEstadoLaboral()) {
+            publishFieldChange(
+                    employee, principal, "estadoLaboral",
+                    employee.getEstadoLaboral().name(), request.estadoLaboral().name());
+            employee.setEstadoLaboral(request.estadoLaboral());
+        }
         return EmployeeResponse.from(employeeRepository.save(employee));
     }
 
     @Transactional(readOnly = true)
-    public List<Object> getHistory(UUID id, StafflyUserPrincipal principal) {
+    public List<EmployeeHistoryEntry> getHistory(UUID id, StafflyUserPrincipal principal) {
         findEmployeeOrThrow(id, principal);
-        // AuditLog todavía no existe (BE-1.8, opcional). El contrato del
-        // endpoint queda estable desde ya; cuando exista, esto pasa a
-        // consultar el historial real en vez de devolver vacío.
-        return List.of();
+        return auditLogRepository
+                .findByCompanyIdAndEntityTypeAndEntityIdOrderByFechaDesc(
+                        principal.getCompanyId(), AUDIT_ENTITY_TYPE, id)
+                .stream()
+                .map(EmployeeHistoryEntry::from)
+                .collect(Collectors.toList());
+    }
+
+    private void publishFieldChange(
+            Employee employee, StafflyUserPrincipal principal, String campo, String valorAnterior, String valorNuevo) {
+        eventPublisher.publishEvent(new AuditableFieldChangedEvent(
+                principal.getCompanyId(), AUDIT_ENTITY_TYPE, employee.getId(),
+                principal.getUserId(), campo, valorAnterior, valorNuevo));
+    }
+
+    /** Sin ceros de más ni notación científica: 500000.00 → "500000". */
+    private String formatMonto(BigDecimal monto) {
+        return monto.stripTrailingZeros().toPlainString();
     }
 
     private void validarFechas(LocalDate fechaIngreso, LocalDate fechaEgreso) {

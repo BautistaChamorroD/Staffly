@@ -383,6 +383,88 @@ class EmployeeControllerTest {
     }
 
     @Test
+    void historyRecordsCategoriaAndSueldoChanges() throws Exception {
+        UUID branchId = createBranch(companyAId, "Sucursal Centro");
+        String createResponse = mockMvc.perform(post("/api/v1/employees")
+                        .header("Authorization", "Bearer " + companyAToken)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(baseEmployeeFields(branchId))))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String employeeId = objectMapper.readTree(createResponse).get("id").asText();
+
+        mockMvc.perform(patch("/api/v1/employees/" + employeeId)
+                        .header("Authorization", "Bearer " + companyAToken)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "categoria", "Encargado",
+                                "sueldoBase", new BigDecimal("650000")))))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/employees/" + employeeId + "/history")
+                        .header("Authorization", "Bearer " + companyAToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[?(@.campo == 'categoria')].valorAnterior").value("Vendedor"))
+                .andExpect(jsonPath("$[?(@.campo == 'categoria')].valorNuevo").value("Encargado"))
+                .andExpect(jsonPath("$[?(@.campo == 'sueldoBase')].valorAnterior").value("500000"))
+                .andExpect(jsonPath("$[?(@.campo == 'sueldoBase')].valorNuevo").value("650000"));
+    }
+
+    @Test
+    void historyRecordsEstadoLaboralChanges() throws Exception {
+        UUID branchId = createBranch(companyAId, "Sucursal Centro");
+        String createResponse = mockMvc.perform(post("/api/v1/employees")
+                        .header("Authorization", "Bearer " + companyAToken)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(baseEmployeeFields(branchId))))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String employeeId = objectMapper.readTree(createResponse).get("id").asText();
+
+        mockMvc.perform(patch("/api/v1/employees/" + employeeId + "/status")
+                        .header("Authorization", "Bearer " + companyAToken)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(Map.of("estadoLaboral", "LICENCIA"))))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/employees/" + employeeId + "/history")
+                        .header("Authorization", "Bearer " + companyAToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].campo").value("estadoLaboral"))
+                .andExpect(jsonPath("$[0].valorAnterior").value("ACTIVO"))
+                .andExpect(jsonPath("$[0].valorNuevo").value("LICENCIA"));
+    }
+
+    @Test
+    void historyIgnoresNonAuditedFieldsAndUnchangedValues() throws Exception {
+        UUID branchId = createBranch(companyAId, "Sucursal Centro");
+        String createResponse = mockMvc.perform(post("/api/v1/employees")
+                        .header("Authorization", "Bearer " + companyAToken)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(baseEmployeeFields(branchId))))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String employeeId = objectMapper.readTree(createResponse).get("id").asText();
+
+        // telefono no es un campo auditado, y categoria llega con el mismo
+        // valor que ya tiene: ninguno de los dos debe generar historial
+        mockMvc.perform(patch("/api/v1/employees/" + employeeId)
+                        .header("Authorization", "Bearer " + companyAToken)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "telefono", "1144445555",
+                                "categoria", "Vendedor"))))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/employees/" + employeeId + "/history")
+                        .header("Authorization", "Bearer " + companyAToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
     void meReturnsLinkedEmployee() throws Exception {
         UUID branchId = createBranch(companyAId, "Sucursal Centro");
         Employee employee = new Employee();
