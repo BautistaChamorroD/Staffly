@@ -70,9 +70,10 @@ export class LoginComponent {
       .login({ email: email!, password: password! })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: () => {
+        next: (response) => {
           this.isLoading = false;
-          this.router.navigate(['/']);
+          // RF-01: primer login con contraseña temporal → cambio forzado
+          this.router.navigate(response.user.debeCambiarPassword ? ['/change-password'] : ['/']);
         },
         error: (error: HttpErrorResponse) => {
           this.isLoading = false;

@@ -99,6 +99,31 @@ describe('authInterceptor', () => {
     expect(routerStub.navigate).toHaveBeenCalledWith(['/login']);
   });
 
+  it('propagates a 401 with code INVALID_CREDENTIALS without refreshing nor clearing the session', () => {
+    authService.setTokens('access-1', 'refresh-1');
+    const errors: unknown[] = [];
+    http
+      .post(`${environment.apiUrl}/auth/change-password`, {
+        currentPassword: 'incorrecta',
+        newPassword: 'NuevaPassword123',
+      })
+      .subscribe({ error: (error) => errors.push(error) });
+
+    // 401 de negocio (contraseña actual incorrecta), no de sesión: el
+    // interceptor no debe refrescar ni desloguear
+    httpMock
+      .expectOne(`${environment.apiUrl}/auth/change-password`)
+      .flush(
+        { code: 'INVALID_CREDENTIALS', message: 'Credenciales inválidas' },
+        { status: 401, statusText: 'Unauthorized' },
+      );
+
+    httpMock.expectNone(`${environment.apiUrl}/auth/refresh`);
+    expect(errors.length).toBe(1);
+    expect(authService.getAccessToken()).toBe('access-1');
+    expect(routerStub.navigate).not.toHaveBeenCalled();
+  });
+
   it('allows a new refresh attempt after a previous refresh failed', () => {
     authService.setTokens('expired-access', 'refresh-1');
     http.get('/api/v1/branches').subscribe({ error: () => undefined });
