@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, tap } from 'rxjs';
+import { Observable, finalize, shareReplay, tap } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import { JwtClaims, LoginRequest, LoginResponse, RefreshResponse } from '../models/auth';
@@ -18,6 +18,7 @@ export class AuthService {
 
   private accessToken: string | null = null;
   private refreshToken: string | null = null;
+  private refreshInFlight$: Observable<RefreshResponse> | null = null;
 
   login(credentials: LoginRequest): Observable<LoginResponse> {
     return this.http
@@ -25,12 +26,25 @@ export class AuthService {
       .pipe(tap((response) => this.setTokens(response.accessToken, response.refreshToken)));
   }
 
+  /**
+   * El backend rota y revoca el refresh token en cada uso: si dos requests
+   * concurrentes reciben 401 y cada una dispara su propio refresh, el
+   * segundo llega con un token ya revocado y desloguea al usuario. Por eso
+   * todos los llamadores comparten un único refresh en vuelo.
+   */
   refreshAccessToken(): Observable<RefreshResponse> {
-    return this.http
-      .post<RefreshResponse>(`${environment.apiUrl}/auth/refresh`, {
-        refreshToken: this.refreshToken,
-      })
-      .pipe(tap((response) => this.setTokens(response.accessToken, response.refreshToken)));
+    if (!this.refreshInFlight$) {
+      this.refreshInFlight$ = this.http
+        .post<RefreshResponse>(`${environment.apiUrl}/auth/refresh`, {
+          refreshToken: this.refreshToken,
+        })
+        .pipe(
+          tap((response) => this.setTokens(response.accessToken, response.refreshToken)),
+          finalize(() => (this.refreshInFlight$ = null)),
+          shareReplay({ bufferSize: 1, refCount: false }),
+        );
+    }
+    return this.refreshInFlight$;
   }
 
   logout(): void {
