@@ -3,6 +3,8 @@ package com.staffly.backend.security;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.staffly.backend.company.Company;
 import com.staffly.backend.company.EstadoEmpresa;
+import com.staffly.backend.platform.EstadoPlatformAdmin;
+import com.staffly.backend.platform.PlatformAdmin;
 import com.staffly.backend.user.EstadoUsuario;
 import com.staffly.backend.user.RolUsuario;
 import com.staffly.backend.user.User;
@@ -17,8 +19,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.Map;
+import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -43,11 +48,17 @@ class AuthControllerTest {
     private UserRepository userRepository;
 
     @Autowired
+    private RevokedTokenRepository revokedTokenRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
+
+    private Company company;
+    private User user;
 
     @BeforeEach
     void seedUser() {
-        Company company = new Company();
+        company = new Company();
         company.setNombre("Heladería Test");
         company.setRazonSocial("Heladería Test SRL");
         company.setPais("AR");
@@ -56,7 +67,7 @@ class AuthControllerTest {
         company.setEstado(EstadoEmpresa.ACTIVA);
         entityManager.persist(company);
 
-        User user = new User();
+        user = new User();
         user.setCompanyId(company.getId());
         user.setEmail("admin@heladeria-test.com");
         user.setPasswordHash(passwordEncoder.encode(PASSWORD));
@@ -66,6 +77,18 @@ class AuthControllerTest {
         userRepository.save(user);
 
         entityManager.flush();
+    }
+
+    private String loginAndGetRefreshToken() throws Exception {
+        String loginBody = objectMapper.writeValueAsString(Map.of(
+                "email", "admin@heladeria-test.com",
+                "password", PASSWORD));
+        String response = mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType("application/json")
+                        .content(loginBody))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return objectMapper.readTree(response).get("refreshToken").asText();
     }
 
     @Test
@@ -159,5 +182,81 @@ class AuthControllerTest {
                         .contentType("application/json")
                         .content(body))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void loginOfUserFromSuspendedCompanyReturns401() throws Exception {
+        company.setEstado(EstadoEmpresa.SUSPENDIDA);
+        entityManager.flush();
+
+        String body = objectMapper.writeValueAsString(Map.of(
+                "email", "admin@heladeria-test.com",
+                "password", PASSWORD));
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType("application/json")
+                        .content(body))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void loginOfInactivePlatformAdminReturns401() throws Exception {
+        PlatformAdmin platformAdmin = new PlatformAdmin();
+        platformAdmin.setEmail("superadmin@staffly.com");
+        platformAdmin.setPasswordHash(passwordEncoder.encode(PASSWORD));
+        platformAdmin.setEstado(EstadoPlatformAdmin.INACTIVO);
+        entityManager.persist(platformAdmin);
+        entityManager.flush();
+
+        String body = objectMapper.writeValueAsString(Map.of(
+                "email", "superadmin@staffly.com",
+                "password", PASSWORD));
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType("application/json")
+                        .content(body))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void refreshAfterUserDeactivatedReturns401() throws Exception {
+        String refreshToken = loginAndGetRefreshToken();
+
+        user.setEstado(EstadoUsuario.INACTIVO);
+        entityManager.flush();
+
+        String refreshBody = objectMapper.writeValueAsString(Map.of("refreshToken", refreshToken));
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .contentType("application/json")
+                        .content(refreshBody))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void refreshAfterCompanySuspendedReturns401() throws Exception {
+        String refreshToken = loginAndGetRefreshToken();
+
+        company.setEstado(EstadoEmpresa.SUSPENDIDA);
+        entityManager.flush();
+
+        String refreshBody = objectMapper.writeValueAsString(Map.of("refreshToken", refreshToken));
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .contentType("application/json")
+                        .content(refreshBody))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void refreshPurgesExpiredRevokedTokens() throws Exception {
+        UUID expiredJti = UUID.randomUUID();
+        revokedTokenRepository.save(new RevokedToken(expiredJti, Instant.now().minusSeconds(60)));
+        entityManager.flush();
+
+        String refreshToken = loginAndGetRefreshToken();
+        String refreshBody = objectMapper.writeValueAsString(Map.of("refreshToken", refreshToken));
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .contentType("application/json")
+                        .content(refreshBody))
+                .andExpect(status().isOk());
+
+        assertThat(revokedTokenRepository.existsById(expiredJti)).isFalse();
     }
 }
