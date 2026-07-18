@@ -175,6 +175,92 @@ class EmployeeControllerTest {
     }
 
     @Test
+    void createWithNegativeSueldoReturns400() throws Exception {
+        UUID branchId = createBranch(companyAId, "Sucursal Centro");
+        Map<String, Object> body = new java.util.HashMap<>(baseEmployeeFields(branchId));
+        body.put("sueldoBase", new BigDecimal("-1000"));
+
+        mockMvc.perform(post("/api/v1/employees")
+                        .header("Authorization", "Bearer " + companyAToken)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void createWithDuplicateDocumentoInSameCompanyReturns409() throws Exception {
+        UUID branchId = createBranch(companyAId, "Sucursal Centro");
+        mockMvc.perform(post("/api/v1/employees")
+                        .header("Authorization", "Bearer " + companyAToken)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(baseEmployeeFields(branchId))))
+                .andExpect(status().isCreated());
+
+        Map<String, Object> duplicado = new java.util.HashMap<>(baseEmployeeFields(branchId));
+        duplicado.put("nombre", "Otro");
+        mockMvc.perform(post("/api/v1/employees")
+                        .header("Authorization", "Bearer " + companyAToken)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(duplicado)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("CONFLICT"));
+    }
+
+    @Test
+    void createWithSameDocumentoInAnotherCompanyIsAllowed() throws Exception {
+        UUID branchA = createBranch(companyAId, "Sucursal A");
+        UUID branchB = createBranch(companyBId, "Sucursal B");
+
+        mockMvc.perform(post("/api/v1/employees")
+                        .header("Authorization", "Bearer " + companyAToken)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(baseEmployeeFields(branchA))))
+                .andExpect(status().isCreated());
+
+        // mismo documento en OTRA empresa: válido, la unicidad es por tenant
+        mockMvc.perform(post("/api/v1/employees")
+                        .header("Authorization", "Bearer " + companyBToken)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(baseEmployeeFields(branchB))))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    void createWithFechaEgresoBeforeFechaIngresoReturns400() throws Exception {
+        UUID branchId = createBranch(companyAId, "Sucursal Centro");
+        Map<String, Object> body = new java.util.HashMap<>(baseEmployeeFields(branchId));
+        body.put("fechaEgreso", "2024-02-01"); // fechaIngreso es 2024-03-01
+
+        mockMvc.perform(post("/api/v1/employees")
+                        .header("Authorization", "Bearer " + companyAToken)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void updateWithFechaEgresoBeforeStoredFechaIngresoReturns400() throws Exception {
+        UUID branchId = createBranch(companyAId, "Sucursal Centro");
+        String createResponse = mockMvc.perform(post("/api/v1/employees")
+                        .header("Authorization", "Bearer " + companyAToken)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(baseEmployeeFields(branchId))))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String employeeId = objectMapper.readTree(createResponse).get("id").asText();
+
+        // la fechaIngreso guardada es 2024-03-01: un egreso anterior es inválido
+        // aunque el PATCH no mande fechaIngreso
+        mockMvc.perform(patch("/api/v1/employees/" + employeeId)
+                        .header("Authorization", "Bearer " + companyAToken)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(Map.of("fechaEgreso", "2024-02-01"))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
     void createWithBranchFromAnotherCompanyReturns404() throws Exception {
         UUID branchFromCompanyB = createBranch(companyBId, "Sucursal B");
 
@@ -449,10 +535,13 @@ class EmployeeControllerTest {
                 .andReturn().getResponse().getContentAsString();
         String ownEmployeeId = objectMapper.readTree(createOwnResponse).get("id").asText();
 
+        // documento distinto: ahora es único por empresa
+        Map<String, Object> otherEmployeeFields = new java.util.HashMap<>(baseEmployeeFields(otherBranchId));
+        otherEmployeeFields.put("documento", "30999888");
         String createOtherResponse = mockMvc.perform(post("/api/v1/employees")
                         .header("Authorization", "Bearer " + companyAToken)
                         .contentType("application/json")
-                        .content(objectMapper.writeValueAsString(baseEmployeeFields(otherBranchId))))
+                        .content(objectMapper.writeValueAsString(otherEmployeeFields)))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         String otherEmployeeId = objectMapper.readTree(createOtherResponse).get("id").asText();

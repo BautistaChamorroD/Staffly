@@ -145,6 +145,21 @@ class UserControllerTest {
     }
 
     @Test
+    void createWithEmailAlreadyUsedByAnotherCompanyReturns409() throws Exception {
+        // el email es único global (login sin discriminador de empresa):
+        // un duplicado de OTRA empresa debe dar 409, nunca un 500 contra el
+        // constraint UNIQUE de la base
+        mockMvc.perform(post("/api/v1/users")
+                        .header("Authorization", "Bearer " + companyAToken)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "email", "admin-b@empresa-b.com",
+                                "rol", "RRHH"))))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("CONFLICT"));
+    }
+
+    @Test
     void createsSupervisorWithBranchFromAnotherCompanyReturns404() throws Exception {
         UUID branchFromCompanyB = createBranch(companyBId, "Sucursal de Empresa B");
 

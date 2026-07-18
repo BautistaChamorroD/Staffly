@@ -1,6 +1,7 @@
 package com.staffly.backend.employee.dto;
 
 import com.staffly.backend.employee.TipoContrato;
+import jakarta.validation.constraints.PositiveOrZero;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -21,7 +22,7 @@ public record UpdateEmployeeRequest(
         LocalDate fechaEgreso,
         TipoContrato tipoContrato,
         String categoria,
-        BigDecimal sueldoBase,
+        @PositiveOrZero BigDecimal sueldoBase,
         String telefono,
         String emailContacto,
         List<UUID> branchIds) {

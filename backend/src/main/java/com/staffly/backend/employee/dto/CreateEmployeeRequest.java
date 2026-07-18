@@ -4,6 +4,7 @@ import com.staffly.backend.employee.TipoContrato;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PositiveOrZero;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -19,7 +20,7 @@ public record CreateEmployeeRequest(
         LocalDate fechaEgreso,
         @NotNull TipoContrato tipoContrato,
         @NotBlank String categoria,
-        @NotNull BigDecimal sueldoBase,
+        @NotNull @PositiveOrZero BigDecimal sueldoBase,
         String telefono,
         String emailContacto,
         @NotEmpty List<UUID> branchIds) {

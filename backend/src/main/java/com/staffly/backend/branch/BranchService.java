@@ -25,8 +25,15 @@ public class BranchService {
 
     @Transactional(readOnly = true)
     public List<BranchResponse> list(StafflyUserPrincipal principal) {
-        return branchRepository.findAll().stream()
-                .filter(b -> isInScope(b, principal))
+        List<Branch> branches;
+        if (principal.getRol() == Rol.SUPERVISOR) {
+            branches = principal.getBranchIds().isEmpty()
+                    ? List.of()
+                    : branchRepository.findByCompanyIdAndIdIn(principal.getCompanyId(), principal.getBranchIds());
+        } else {
+            branches = branchRepository.findByCompanyId(principal.getCompanyId());
+        }
+        return branches.stream()
                 .map(BranchResponse::from)
                 .collect(Collectors.toList());
     }

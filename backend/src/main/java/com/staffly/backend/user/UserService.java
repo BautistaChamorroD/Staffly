@@ -48,9 +48,7 @@ public class UserService {
 
     @Transactional(readOnly = true)
     public List<UserResponse> list(RolUsuario rolFilter, EstadoUsuario estadoFilter) {
-        return userRepository.findAll().stream()
-                .filter(u -> rolFilter == null || u.getRol() == rolFilter)
-                .filter(u -> estadoFilter == null || u.getEstado() == estadoFilter)
+        return userRepository.findAllFiltered(rolFilter, estadoFilter).stream()
                 .map(UserResponse::from)
                 .collect(Collectors.toList());
     }
@@ -70,7 +68,10 @@ public class UserService {
 
     @Transactional
     public CreateUserResponse create(CreateUserRequest request, StafflyUserPrincipal principal) {
-        if (userRepository.findByEmail(request.email()).isPresent()) {
+        // chequeo cross-tenant a propósito: el email es único global (el
+        // login no discrimina por empresa), y findByEmail acá correría con
+        // el tenantFilter activo y no vería duplicados de otras empresas
+        if (userRepository.emailExistsAcrossAllCompanies(request.email())) {
             throw new ConflictException("El email ya está en uso");
         }
 
