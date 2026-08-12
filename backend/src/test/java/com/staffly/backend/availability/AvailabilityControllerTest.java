@@ -365,4 +365,33 @@ class AvailabilityControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
     }
+
+    @Test
+    void secondsInHoraAreTruncatedToMinute() throws Exception {
+        // horas con segundos no nulos: deben persistirse truncadas a minuto
+        String body = objectMapper.writeValueAsString(Map.of(
+                "diaSemana", "LUNES", "horaInicio", "09:00:15", "horaFin", "10:00:45"));
+        mockMvc.perform(post(availabilityUrl(employeeA1.getId()))
+                        .header("Authorization", "Bearer " + adminAToken)
+                        .contentType("application/json")
+                        .content(body))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.horaInicio").value("09:00:00"))
+                .andExpect(jsonPath("$.horaFin").value("10:00:00"));
+    }
+
+    @Test
+    void secondsOnlyDifferenceIsRejectedAsEmptyFranjaAfterTruncation() throws Exception {
+        // 09:00:30 y 09:00:00 difieren solo en segundos: antes del fix,
+        // enMinutos descartaba los segundos y el wrap de medianoche
+        // convertía esto en una franja "24hs" espuria en vez de rechazarla
+        String body = objectMapper.writeValueAsString(Map.of(
+                "diaSemana", "LUNES", "horaInicio", "09:00:30", "horaFin", "09:00:00"));
+        mockMvc.perform(post(availabilityUrl(employeeA1.getId()))
+                        .header("Authorization", "Bearer " + adminAToken)
+                        .contentType("application/json")
+                        .content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
 }

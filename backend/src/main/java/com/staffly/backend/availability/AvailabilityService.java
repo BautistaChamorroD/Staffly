@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalTime;
+import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
@@ -54,15 +55,19 @@ public class AvailabilityService {
     @Transactional
     public AvailabilityResponse create(UUID employeeId, CreateAvailabilityRequest request, StafflyUserPrincipal principal) {
         Employee employee = resolveEmployee(employeeId, principal);
-        validarFranja(request.horaInicio(), request.horaFin());
-        validarSolape(employee, request.diaSemana(), request.horaInicio(), request.horaFin(), null, principal);
+        // se trunca a minuto en la entrada: enMinutos/finEnMinutos operan a
+        // granularidad de minuto y no deben recibir segundos no nulos
+        LocalTime horaInicio = request.horaInicio().truncatedTo(ChronoUnit.MINUTES);
+        LocalTime horaFin = request.horaFin().truncatedTo(ChronoUnit.MINUTES);
+        validarFranja(horaInicio, horaFin);
+        validarSolape(employee, request.diaSemana(), horaInicio, horaFin, null, principal);
 
         EmployeeAvailability availability = new EmployeeAvailability();
         availability.setCompanyId(principal.getCompanyId());
         availability.setEmployee(employee);
         availability.setDiaSemana(request.diaSemana());
-        availability.setHoraInicio(request.horaInicio());
-        availability.setHoraFin(request.horaFin());
+        availability.setHoraInicio(horaInicio);
+        availability.setHoraFin(horaFin);
         return AvailabilityResponse.from(availabilityRepository.save(availability));
     }
 
@@ -76,6 +81,12 @@ public class AvailabilityService {
         DiaSemana diaFinal = request.diaSemana() != null ? request.diaSemana() : availability.getDiaSemana();
         LocalTime inicioFinal = request.horaInicio() != null ? request.horaInicio() : availability.getHoraInicio();
         LocalTime finFinal = request.horaFin() != null ? request.horaFin() : availability.getHoraFin();
+
+        // se trunca a minuto tanto el valor entrante como el ya persistido
+        // reutilizado, para que ambos queden a la misma granularidad que
+        // enMinutos/finEnMinutos asumen
+        inicioFinal = inicioFinal.truncatedTo(ChronoUnit.MINUTES);
+        finFinal = finFinal.truncatedTo(ChronoUnit.MINUTES);
 
         validarFranja(inicioFinal, finFinal);
         validarSolape(employee, diaFinal, inicioFinal, finFinal, availability.getId(), principal);
