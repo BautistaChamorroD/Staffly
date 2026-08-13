@@ -1,5 +1,7 @@
 package com.staffly.backend.availability;
 
+import java.time.DayOfWeek;
+
 /**
  * Día de la semana de una franja de disponibilidad recurrente. El orden de
  * declaración (LUNES primero) es el orden semanal que usa el service para
@@ -13,5 +15,17 @@ public enum DiaSemana {
     JUEVES,
     VIERNES,
     SABADO,
-    DOMINGO
+    DOMINGO;
+
+    public static DiaSemana fromDayOfWeek(DayOfWeek dow) {
+        return switch (dow) {
+            case MONDAY -> LUNES;
+            case TUESDAY -> MARTES;
+            case WEDNESDAY -> MIERCOLES;
+            case THURSDAY -> JUEVES;
+            case FRIDAY -> VIERNES;
+            case SATURDAY -> SABADO;
+            case SUNDAY -> DOMINGO;
+        };
+    }
 }
