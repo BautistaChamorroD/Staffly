@@ -55,4 +55,18 @@ public interface ScheduleRepository extends JpaRepository<Schedule, UUID> {
             @Param("inicio") LocalDateTime inicio,
             @Param("fin") LocalDateTime fin,
             Pageable pageable);
+
+    @Query("""
+        SELECT s.id FROM Schedule s
+        WHERE s.companyId = :companyId
+          AND s.employee.id = :employeeId
+          AND s.fechaHoraInicio < :fin
+          AND s.fechaHoraFin > :inicio
+        ORDER BY s.fechaHoraInicio ASC
+    """)
+    List<UUID> findAllConflictingIdsInRange(
+            @Param("companyId") UUID companyId,
+            @Param("employeeId") UUID employeeId,
+            @Param("inicio") LocalDateTime inicio,
+            @Param("fin") LocalDateTime fin);
 }

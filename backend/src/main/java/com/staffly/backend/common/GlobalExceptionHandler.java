@@ -68,6 +68,15 @@ public class GlobalExceptionHandler {
         ));
     }
 
+    @ExceptionHandler(LeaveApprovalConflictException.class)
+    public ResponseEntity<Map<String, Object>> handleLeaveApprovalConflict(LeaveApprovalConflictException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                "code", "LEAVE_APPROVAL_CONFLICT",
+                "message", ex.getMessage(),
+                "turnosConflictivos", ex.getTurnosConflictivos()
+        ));
+    }
+
     @ExceptionHandler(BadRequestException.class)
     public ResponseEntity<ApiError> handleBadRequest(BadRequestException ex) {
         return ResponseEntity.badRequest()
