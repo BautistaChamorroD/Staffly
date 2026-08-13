@@ -1,6 +1,5 @@
 package com.staffly.backend.common;
 
-import com.staffly.backend.common.ScheduleOverlapBatchException;
 import com.staffly.backend.security.InvalidCredentialsException;
 import com.staffly.backend.security.InvalidTokenException;
 import io.jsonwebtoken.JwtException;

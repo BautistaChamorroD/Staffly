@@ -290,7 +290,8 @@ public class ScheduleService {
             saved.add(scheduleRepository.save(s));
         }
 
-        // Disponibilidad — mismo resultado para todas las copias (mismo día de semana y hora)
+        // Todas las copias comparten DayOfWeek y rango horario exacto → disponibilidad idéntica.
+        // Si checkDisponibilidad incorpora lógica fecha-específica en el futuro, iterar por copia.
         String warning = checkDisponibilidad(saved.get(0), principal.getCompanyId());
         for (Schedule s : saved) {
             if (warning != null) {
