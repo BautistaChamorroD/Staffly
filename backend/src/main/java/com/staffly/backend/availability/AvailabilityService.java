@@ -1,4 +1,3 @@
-// backend/src/main/java/com/staffly/backend/availability/AvailabilityService.java
 package com.staffly.backend.availability;
 
 import com.staffly.backend.availability.dto.AvailabilityResponse;
@@ -35,6 +34,7 @@ public class AvailabilityService {
     public List<AvailabilityResponse> list(UUID employeeId, StafflyUserPrincipal principal) {
         Employee employee = employeeResolver.resolveForCaller(employeeId, principal, true);
         return availabilityRepository.findByCompanyIdAndEmployeeId(principal.getCompanyId(), employee.getId()).stream()
+                // orden semanal (LUNES primero) por ordinal del enum: persiste como STRING, un ORDER BY sería alfabético
                 .sorted(Comparator
                         .comparing((EmployeeAvailability a) -> a.getDiaSemana().ordinal())
                         .thenComparing(EmployeeAvailability::getHoraInicio))
@@ -123,6 +123,11 @@ public class AvailabilityService {
         return hora.getHour() * 60 + hora.getMinute();
     }
 
+    /**
+     * Fin del intervalo [inicio, fin) en minutos, con wrap: si la hora de
+     * fin es menor o igual a la de inicio, la franja cruza medianoche y el
+     * fin se corre +24h (viernes 20:00–02:00 → [1200, 1560)).
+     */
     private int finEnMinutos(LocalTime inicio, LocalTime fin) {
         int minutosFin = enMinutos(fin);
         return minutosFin <= enMinutos(inicio) ? minutosFin + 24 * 60 : minutosFin;

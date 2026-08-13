@@ -1,4 +1,3 @@
-// backend/src/main/java/com/staffly/backend/employee/EmployeeResolver.java
 package com.staffly.backend.employee;
 
 import com.staffly.backend.common.ResourceNotFoundException;
