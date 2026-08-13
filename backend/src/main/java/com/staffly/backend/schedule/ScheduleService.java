@@ -9,10 +9,13 @@ import com.staffly.backend.branch.BranchRepository;
 import com.staffly.backend.common.BadRequestException;
 import com.staffly.backend.common.ConflictException;
 import com.staffly.backend.common.ResourceNotFoundException;
+import com.staffly.backend.common.ScheduleOverlapBatchException;
 import com.staffly.backend.common.audit.AuditableFieldChangedEvent;
 import com.staffly.backend.employee.Employee;
 import com.staffly.backend.employee.EmployeeResolver;
 import com.staffly.backend.schedule.dto.CreateScheduleRequest;
+import com.staffly.backend.schedule.dto.DuplicateWeeklyRequest;
+import com.staffly.backend.schedule.dto.DuplicateWeeklyResponse;
 import com.staffly.backend.schedule.dto.ScheduleResponse;
 import com.staffly.backend.schedule.dto.UpdateScheduleRequest;
 import com.staffly.backend.schedule.dto.UpdateStatusRequest;
@@ -24,11 +27,16 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.YearMonth;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.data.domain.PageRequest;
 
 @Service
 public class ScheduleService {
@@ -221,6 +229,81 @@ public class ScheduleService {
         }
         schedule.setEstado(nuevo);
         return ScheduleResponse.from(scheduleRepository.save(schedule));
+    }
+
+    @Transactional
+    public DuplicateWeeklyResponse duplicateWeekly(UUID sourceId,
+                                                    DuplicateWeeklyRequest request,
+                                                    StafflyUserPrincipal principal) {
+        Schedule source = scheduleRepository.findByIdAndCompanyId(sourceId, principal.getCompanyId())
+                .orElseThrow(() -> new ResourceNotFoundException("No se encontró el turno solicitado"));
+
+        if (principal.getRol() == Rol.SUPERVISOR
+                && !principal.getBranchIds().contains(source.getBranch().getId())) {
+            throw new ResourceNotFoundException("No se encontró el turno solicitado");
+        }
+
+        DayOfWeek weekday = source.getFechaHoraInicio().getDayOfWeek();
+        YearMonth targetMonth = YearMonth.of(request.anioObjetivo(), request.mesObjetivo());
+        LocalDate sourceDate = source.getFechaHoraInicio().toLocalDate();
+        long dayDelta = ChronoUnit.DAYS.between(sourceDate, source.getFechaHoraFin().toLocalDate());
+
+        record Copy(LocalDate date, java.time.LocalDateTime inicio, java.time.LocalDateTime fin) {}
+        List<Copy> copies = new ArrayList<>();
+        for (LocalDate d = targetMonth.atDay(1); !d.isAfter(targetMonth.atEndOfMonth()); d = d.plusDays(1)) {
+            if (d.getDayOfWeek() == weekday && !d.equals(sourceDate)) {
+                copies.add(new Copy(d,
+                        d.atTime(source.getFechaHoraInicio().toLocalTime()),
+                        d.plusDays(dayDelta).atTime(source.getFechaHoraFin().toLocalTime())));
+            }
+        }
+
+        if (copies.isEmpty()) {
+            return new DuplicateWeeklyResponse(List.of(), null);
+        }
+
+        // Verificación atómica: recopilar todos los conflictos antes de rechazar
+        List<ScheduleOverlapBatchException.ConflictDetail> conflictos = new ArrayList<>();
+        for (Copy copy : copies) {
+            List<UUID> ids = scheduleRepository.findConflictingIds(
+                    principal.getCompanyId(), source.getEmployee().getId(),
+                    copy.inicio(), copy.fin(), PageRequest.of(0, 1));
+            if (!ids.isEmpty()) {
+                conflictos.add(new ScheduleOverlapBatchException.ConflictDetail(copy.date(), ids.get(0)));
+            }
+        }
+        if (!conflictos.isEmpty()) {
+            throw new ScheduleOverlapBatchException(conflictos);
+        }
+
+        // Crear todas las copias
+        List<Schedule> saved = new ArrayList<>();
+        for (Copy copy : copies) {
+            Schedule s = new Schedule();
+            s.setCompanyId(principal.getCompanyId());
+            s.setEmployee(source.getEmployee());
+            s.setBranch(source.getBranch());
+            s.setFechaHoraInicio(copy.inicio());
+            s.setFechaHoraFin(copy.fin());
+            s.setTipoTurno(source.getTipoTurno());
+            s.setEstado(EstadoTurno.PLANIFICADO);
+            saved.add(scheduleRepository.save(s));
+        }
+
+        String batchWarning = null;
+        for (Schedule s : saved) {
+            String w = checkDisponibilidad(s, principal.getCompanyId());
+            if (w != null) {
+                eventPublisher.publishEvent(new AuditableFieldChangedEvent(
+                        principal.getCompanyId(), "Schedule", s.getId(), principal.getUserId(),
+                        "asignacion_fuera_disponibilidad", null, w));
+                batchWarning = w;
+            }
+        }
+
+        return new DuplicateWeeklyResponse(
+                saved.stream().map(ScheduleResponse::from).toList(),
+                batchWarning);
     }
 
     // ── disponibilidad ────────────────────────────────────────────────────────

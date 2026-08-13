@@ -2,6 +2,8 @@
 package com.staffly.backend.schedule;
 
 import com.staffly.backend.schedule.dto.CreateScheduleRequest;
+import com.staffly.backend.schedule.dto.DuplicateWeeklyRequest;
+import com.staffly.backend.schedule.dto.DuplicateWeeklyResponse;
 import com.staffly.backend.schedule.dto.ScheduleResponse;
 import com.staffly.backend.schedule.dto.UpdateScheduleRequest;
 import com.staffly.backend.schedule.dto.UpdateStatusRequest;
@@ -96,5 +98,15 @@ public class ScheduleController {
             @Valid @RequestBody UpdateStatusRequest request,
             @AuthenticationPrincipal StafflyUserPrincipal principal) {
         return scheduleService.updateStatus(id, request, principal);
+    }
+
+    @PostMapping("/{id}/duplicate-weekly")
+    @PreAuthorize("hasAnyRole('ADMIN','RRHH','SUPERVISOR')")
+    @ResponseStatus(HttpStatus.CREATED)
+    public DuplicateWeeklyResponse duplicateWeekly(
+            @PathVariable UUID id,
+            @Valid @RequestBody DuplicateWeeklyRequest request,
+            @AuthenticationPrincipal StafflyUserPrincipal principal) {
+        return scheduleService.duplicateWeekly(id, request, principal);
     }
 }

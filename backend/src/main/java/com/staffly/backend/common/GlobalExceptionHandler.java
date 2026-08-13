@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestControllerAdvice
@@ -56,6 +57,15 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiError> handleConflict(ConflictException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(ApiError.of("CONFLICT", ex.getMessage()));
+    }
+
+    @ExceptionHandler(ScheduleOverlapBatchException.class)
+    public ResponseEntity<Map<String, Object>> handleOverlapBatch(ScheduleOverlapBatchException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                "code", "SCHEDULE_OVERLAP_BATCH",
+                "message", ex.getMessage(),
+                "conflictos", ex.getConflictos()
+        ));
     }
 
     @ExceptionHandler(BadRequestException.class)

@@ -624,4 +624,168 @@ class ScheduleControllerTest {
         mockMvc.perform(delete(BASE_URL + "/" + id).header("Authorization", "Bearer " + rrhhToken))
                 .andExpect(status().isNoContent());
     }
+
+    // ── BE-2.4: duplicate-weekly ──────────────────────────────────────────────
+
+    @Test
+    void duplicarSemanal_exitoso_creaTodasLasCopias() throws Exception {
+        // source: lunes 2026-07-06 — emp1 con disponibilidad LUNES 08:00-18:00
+        addAvailability(companyAId, emp1, DiaSemana.LUNES, LocalTime.of(8, 0), LocalTime.of(18, 0));
+        UUID sourceId = postSchedule(adminToken, emp1.getId(), branch1.getId(),
+                "2026-07-06T09:00:00", "2026-07-06T17:00:00", "FIJO");
+
+        String body = objectMapper.writeValueAsString(Map.of("mesObjetivo", 8, "anioObjetivo", 2026));
+        String resp = mockMvc.perform(post(BASE_URL + "/" + sourceId + "/duplicate-weekly")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType("application/json").content(body))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        var tree = objectMapper.readTree(resp);
+        // lunes de agosto 2026: 3, 10, 17, 24, 31 — ninguno es 2026-07-06
+        assertThat(tree.get("turnosCreados").size()).isEqualTo(5);
+        assertThat(tree.get("advertencia").isNull()).isTrue();
+    }
+
+    @Test
+    void duplicarSemanal_mismoMes_omiteOcurrenciaOriginal() throws Exception {
+        // source: lunes 2026-08-03 (primer lunes de agosto)
+        UUID sourceId = postSchedule(adminToken, emp1.getId(), branch1.getId(),
+                "2026-08-03T09:00:00", "2026-08-03T17:00:00", "FIJO");
+
+        String body = objectMapper.writeValueAsString(Map.of("mesObjetivo", 8, "anioObjetivo", 2026));
+        String resp = mockMvc.perform(post(BASE_URL + "/" + sourceId + "/duplicate-weekly")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType("application/json").content(body))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        // Aug 3 es el source → se omite; quedan Aug 10, 17, 24, 31 = 4 copias
+        assertThat(objectMapper.readTree(resp).get("turnosCreados").size()).isEqualTo(4);
+    }
+
+    @Test
+    void duplicarSemanal_overlap_unaFecha_fallaTodo() throws Exception {
+        UUID sourceId = postSchedule(adminToken, emp1.getId(), branch1.getId(),
+                "2026-07-06T09:00:00", "2026-07-06T17:00:00", "FIJO");
+        // conflicto exacto en lunes 2026-08-10
+        UUID conflictId = postSchedule(adminToken, emp1.getId(), branch1.getId(),
+                "2026-08-10T09:00:00", "2026-08-10T17:00:00", "FIJO");
+
+        String body = objectMapper.writeValueAsString(Map.of("mesObjetivo", 8, "anioObjetivo", 2026));
+        String resp = mockMvc.perform(post(BASE_URL + "/" + sourceId + "/duplicate-weekly")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType("application/json").content(body))
+                .andExpect(status().isConflict())
+                .andReturn().getResponse().getContentAsString();
+
+        var tree = objectMapper.readTree(resp);
+        assertThat(tree.get("code").asText()).isEqualTo("SCHEDULE_OVERLAP_BATCH");
+        assertThat(tree.get("conflictos").size()).isEqualTo(1);
+        assertThat(tree.get("conflictos").get(0).get("fecha").asText()).isEqualTo("2026-08-10");
+        assertThat(tree.get("conflictos").get(0).get("turnoExistenteId").asText())
+                .isEqualTo(conflictId.toString());
+    }
+
+    @Test
+    void duplicarSemanal_overlap_variasFechas_reportaTodasLasColisiones() throws Exception {
+        UUID sourceId = postSchedule(adminToken, emp1.getId(), branch1.getId(),
+                "2026-07-06T09:00:00", "2026-07-06T17:00:00", "FIJO");
+        // conflictos en Aug 10 y Aug 17
+        postSchedule(adminToken, emp1.getId(), branch1.getId(),
+                "2026-08-10T09:00:00", "2026-08-10T17:00:00", "FIJO");
+        postSchedule(adminToken, emp1.getId(), branch1.getId(),
+                "2026-08-17T09:00:00", "2026-08-17T17:00:00", "FIJO");
+
+        String body = objectMapper.writeValueAsString(Map.of("mesObjetivo", 8, "anioObjetivo", 2026));
+        String resp = mockMvc.perform(post(BASE_URL + "/" + sourceId + "/duplicate-weekly")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType("application/json").content(body))
+                .andExpect(status().isConflict())
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(objectMapper.readTree(resp).get("conflictos").size()).isEqualTo(2);
+    }
+
+    @Test
+    void duplicarSemanal_fueraDeDisponibilidad_creaConAdvertencia() throws Exception {
+        // emp1 sin disponibilidad declarada
+        UUID sourceId = postSchedule(adminToken, emp1.getId(), branch1.getId(),
+                "2026-07-06T09:00:00", "2026-07-06T17:00:00", "FIJO");
+
+        String body = objectMapper.writeValueAsString(Map.of("mesObjetivo", 8, "anioObjetivo", 2026));
+        String resp = mockMvc.perform(post(BASE_URL + "/" + sourceId + "/duplicate-weekly")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType("application/json").content(body))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        var tree = objectMapper.readTree(resp);
+        assertThat(tree.get("turnosCreados").size()).isEqualTo(5);
+        assertThat(tree.get("advertencia").asText()).isEqualTo("OUT_OF_AVAILABILITY");
+        em.flush();
+        // verificar AuditLog por copia (no por el source, filtrar por IDs de copias)
+        var copiaIds = new java.util.HashSet<UUID>();
+        tree.get("turnosCreados").forEach(n -> copiaIds.add(UUID.fromString(n.get("id").asText())));
+        long auditCount = auditLogRepository.findAll().stream()
+                .filter(l -> l.getEntityType().equals("Schedule")
+                        && copiaIds.contains(l.getEntityId())
+                        && l.getCampo().equals("asignacion_fuera_disponibilidad"))
+                .count();
+        assertThat(auditCount).isEqualTo(5);
+    }
+
+    @Test
+    void duplicarSemanal_scheduleNoExiste_404() throws Exception {
+        String body = objectMapper.writeValueAsString(Map.of("mesObjetivo", 8, "anioObjetivo", 2026));
+        mockMvc.perform(post(BASE_URL + "/" + UUID.randomUUID() + "/duplicate-weekly")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType("application/json").content(body))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void duplicarSemanal_supervisorFueraDeSuSucursal_404() throws Exception {
+        // source en branch2 — fuera del scope del supervisor (que solo gestiona branch1)
+        UUID sourceId = postSchedule(adminToken, emp2.getId(), branch2.getId(),
+                "2026-07-06T09:00:00", "2026-07-06T17:00:00", "FIJO");
+
+        String body = objectMapper.writeValueAsString(Map.of("mesObjetivo", 8, "anioObjetivo", 2026));
+        mockMvc.perform(post(BASE_URL + "/" + sourceId + "/duplicate-weekly")
+                        .header("Authorization", "Bearer " + supervisorToken)
+                        .contentType("application/json").content(body))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void duplicarSemanal_employee_403() throws Exception {
+        UUID sourceId = postSchedule(adminToken, emp1.getId(), branch1.getId(),
+                "2026-07-06T09:00:00", "2026-07-06T17:00:00", "FIJO");
+
+        String body = objectMapper.writeValueAsString(Map.of("mesObjetivo", 8, "anioObjetivo", 2026));
+        mockMvc.perform(post(BASE_URL + "/" + sourceId + "/duplicate-weekly")
+                        .header("Authorization", "Bearer " + empToken1)
+                        .contentType("application/json").content(body))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void duplicarSemanal_mesInvalido_400() throws Exception {
+        UUID sourceId = postSchedule(adminToken, emp1.getId(), branch1.getId(),
+                "2026-07-06T09:00:00", "2026-07-06T17:00:00", "FIJO");
+
+        // mes = 0 → 400
+        mockMvc.perform(post(BASE_URL + "/" + sourceId + "/duplicate-weekly")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(Map.of("mesObjetivo", 0, "anioObjetivo", 2026))))
+                .andExpect(status().isBadRequest());
+
+        // mes = 13 → 400
+        mockMvc.perform(post(BASE_URL + "/" + sourceId + "/duplicate-weekly")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(Map.of("mesObjetivo", 13, "anioObjetivo", 2026))))
+                .andExpect(status().isBadRequest());
+    }
 }

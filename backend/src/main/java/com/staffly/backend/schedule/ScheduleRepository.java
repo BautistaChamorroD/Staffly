@@ -1,5 +1,6 @@
 package com.staffly.backend.schedule;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -35,4 +36,23 @@ public interface ScheduleRepository extends JpaRepository<Schedule, UUID> {
             @Param("inicio") LocalDateTime inicio,
             @Param("fin") LocalDateTime fin,
             @Param("excludeId") UUID excludeId);
+
+    /**
+     * Retorna el ID del primer turno que solapa [inicio, fin) para el empleado.
+     * Usar con PageRequest.of(0, 1) para obtener solo uno.
+     */
+    @Query("""
+        SELECT s.id FROM Schedule s
+        WHERE s.companyId = :companyId
+          AND s.employee.id = :employeeId
+          AND s.fechaHoraInicio < :fin
+          AND s.fechaHoraFin > :inicio
+        ORDER BY s.fechaHoraInicio ASC
+    """)
+    List<UUID> findConflictingIds(
+            @Param("companyId") UUID companyId,
+            @Param("employeeId") UUID employeeId,
+            @Param("inicio") LocalDateTime inicio,
+            @Param("fin") LocalDateTime fin,
+            Pageable pageable);
 }
