@@ -290,20 +290,20 @@ public class ScheduleService {
             saved.add(scheduleRepository.save(s));
         }
 
-        // Todas las copias comparten DayOfWeek y rango horario exacto → disponibilidad idéntica.
-        // Si checkDisponibilidad incorpora lógica fecha-específica en el futuro, iterar por copia.
-        String warning = checkDisponibilidad(saved.get(0), principal.getCompanyId());
+        String batchWarning = null;
         for (Schedule s : saved) {
-            if (warning != null) {
+            String w = checkDisponibilidad(s, principal.getCompanyId());
+            if (w != null) {
                 eventPublisher.publishEvent(new AuditableFieldChangedEvent(
                         principal.getCompanyId(), "Schedule", s.getId(), principal.getUserId(),
-                        "asignacion_fuera_disponibilidad", null, warning));
+                        "asignacion_fuera_disponibilidad", null, w));
+                batchWarning = w;
             }
         }
 
         return new DuplicateWeeklyResponse(
-                saved.stream().map(s -> ScheduleResponse.from(s, warning)).toList(),
-                warning);
+                saved.stream().map(ScheduleResponse::from).toList(),
+                batchWarning);
     }
 
     // ── disponibilidad ────────────────────────────────────────────────────────
