@@ -215,7 +215,7 @@ public class ScheduleService {
         }
         EstadoTurno nuevo = request.estado();
         if (nuevo != EstadoTurno.CUMPLIDO && nuevo != EstadoTurno.AUSENTE) {
-            throw new BadRequestException("Estado inválido: solo se permite CUMPLIDO o AUSENTE");
+            throw new ConflictException("Estado inválido: solo se permite CUMPLIDO o AUSENTE");
         }
         schedule.setEstado(nuevo);
         return ScheduleResponse.from(scheduleRepository.save(schedule));

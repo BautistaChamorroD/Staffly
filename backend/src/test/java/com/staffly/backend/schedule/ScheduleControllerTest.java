@@ -68,7 +68,6 @@ class ScheduleControllerTest {
     private String rrhhToken;
     private String supervisorToken; // manages branch1 only
     private String empToken1;       // linked to emp1
-    private String empToken2;       // linked to emp2
 
     // Company B
     private UUID companyBId;
@@ -88,7 +87,6 @@ class ScheduleControllerTest {
         rrhhToken     = createUserAndLogin(companyAId, "rrhh@a.com",       RolUsuario.RRHH,       null,  null);
         supervisorToken = createUserAndLogin(companyAId, "sup@a.com",      RolUsuario.SUPERVISOR, null,  branch1);
         empToken1     = createUserAndLogin(companyAId, "emp1@a.com",       RolUsuario.EMPLOYEE,   emp1,  null);
-        empToken2     = createUserAndLogin(companyAId, "emp2@a.com",       RolUsuario.EMPLOYEE,   emp2,  null);
 
         companyBId = createCompany("Empresa B");
         branchB    = createBranch(companyBId, "Sucursal B");
@@ -501,6 +499,13 @@ class ScheduleControllerTest {
         mockMvc.perform(post(BASE_URL + "/" + id + "/confirm")
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk());
+
+        // CONFIRMADO + target PLANIFICADO → 409
+        mockMvc.perform(patch(BASE_URL + "/" + id + "/status")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(Map.of("estado", "PLANIFICADO"))))
+                .andExpect(status().isConflict());
 
         // CONFIRMADO → AUSENTE → 200
         mockMvc.perform(patch(BASE_URL + "/" + id + "/status")
