@@ -322,6 +322,67 @@ class ScheduleControllerTest {
     }
 
     @Test
+    void warningFueraDeVentanaDeDsponibilidad() throws Exception {
+        // emp1 tiene LUNES 08:00-12:00 pero el turno es 14:00-18:00 → warning
+        // 2026-07-06 es lunes
+        addAvailability(companyAId, emp1, DiaSemana.LUNES, LocalTime.of(8, 0), LocalTime.of(12, 0));
+
+        String body = objectMapper.writeValueAsString(Map.of(
+                "employeeId", emp1.getId().toString(),
+                "branchId", branch1.getId().toString(),
+                "fechaHoraInicio", "2026-07-06T14:00:00",
+                "fechaHoraFin", "2026-07-06T18:00:00",
+                "tipoTurno", "FIJO"));
+        mockMvc.perform(post(BASE_URL)
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType("application/json").content(body))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.warning").value("OUT_OF_AVAILABILITY"));
+    }
+
+    @Test
+    void fechaHoraFinDebeSerPosteriorAInicio() throws Exception {
+        // fin == inicio → 400
+        String body = objectMapper.writeValueAsString(Map.of(
+                "employeeId", emp1.getId().toString(),
+                "branchId", branch1.getId().toString(),
+                "fechaHoraInicio", "2026-07-06T10:00:00",
+                "fechaHoraFin", "2026-07-06T10:00:00",
+                "tipoTurno", "FIJO"));
+        mockMvc.perform(post(BASE_URL)
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType("application/json").content(body))
+                .andExpect(status().isBadRequest());
+
+        // fin < inicio → 400
+        String body2 = objectMapper.writeValueAsString(Map.of(
+                "employeeId", emp1.getId().toString(),
+                "branchId", branch1.getId().toString(),
+                "fechaHoraInicio", "2026-07-06T18:00:00",
+                "fechaHoraFin", "2026-07-06T10:00:00",
+                "tipoTurno", "FIJO"));
+        mockMvc.perform(post(BASE_URL)
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType("application/json").content(body2))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void employeeNoPuedeEscribir() throws Exception {
+        // EMPLOYEE no puede crear turnos → 403
+        String body = objectMapper.writeValueAsString(Map.of(
+                "employeeId", emp1.getId().toString(),
+                "branchId", branch1.getId().toString(),
+                "fechaHoraInicio", "2026-07-06T09:00:00",
+                "fechaHoraFin", "2026-07-06T17:00:00",
+                "tipoTurno", "FIJO"));
+        mockMvc.perform(post(BASE_URL)
+                        .header("Authorization", "Bearer " + empToken1)
+                        .contentType("application/json").content(body))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void sinWarningDentroDeDisponibilidad() throws Exception {
         // 2026-07-06 es lunes — LUNES 08:00-18:00 cubre el turno 09:00-17:00
         addAvailability(companyAId, emp1, DiaSemana.LUNES, LocalTime.of(8, 0), LocalTime.of(18, 0));
@@ -344,7 +405,7 @@ class ScheduleControllerTest {
         // Turno viernes 22:00 → sábado 06:00
         // Disponibilidad VIERNES 20:00-23:59 cubre segmento A pero no hay SABADO → warning
         // 2026-07-10 es viernes
-        addAvailability(companyAId, emp1, DiaSemana.VIERNES, LocalTime.of(20, 0), LocalTime.of(23, 59));
+        addAvailability(companyAId, emp1, DiaSemana.VIERNES, LocalTime.of(20, 0), LocalTime.MIDNIGHT);
 
         String body = objectMapper.writeValueAsString(Map.of(
                 "employeeId", emp1.getId().toString(),

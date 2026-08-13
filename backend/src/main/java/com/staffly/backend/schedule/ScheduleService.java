@@ -62,7 +62,9 @@ public class ScheduleService {
 
         UUID effectiveEmpId = employeeIdFilter;
         if (principal.getRol() == Rol.EMPLOYEE) {
-            effectiveEmpId = resolveOwnEmployeeId(principal);
+            UUID own = resolveOwnEmployeeId(principal);
+            if (own == null) return List.of();
+            effectiveEmpId = own;
         }
         final UUID finalEmpId = effectiveEmpId;
 
