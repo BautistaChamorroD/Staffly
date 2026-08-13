@@ -1,0 +1,2 @@
+-- H2 no soporta índices parciales con WHERE. Sin efecto en dev/test.
+-- Los constraints reales se aplican en PostgreSQL (ver db/migration-postgresql/V8).
