@@ -1,4 +1,4 @@
-<main class="flex h-screen flex-col px-4 pt-6 pb-4 overflow-hidden">
+<main class="flex h-screen flex-col overflow-hidden px-4 pb-4 pt-6">
   <!-- Header bar -->
   <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
     <h1 class="font-heading text-2xl font-bold text-brand-ink">Horarios</h1>
@@ -11,7 +11,6 @@
         <button ui-button variant="secondary" size="sm" type="button" (click)="nextWeek()">&#8594;</button>
       </div>
 
-      <!-- Branch selector -->
       @if (branchesError) {
         <p class="text-sm text-badge-error-ink" role="alert">{{ branchesError }}</p>
       } @else {
@@ -33,9 +32,8 @@
   @if (!selectedBranchId) {
     <p class="text-sm text-brand-muted">Seleccioná una sucursal para ver los horarios.</p>
   } @else {
-    <!-- Grid container -->
     <div class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-brand-line">
-      <!-- Day-header row (sticky) -->
+      <!-- Day headers (sticky) -->
       <div
         class="grid shrink-0 border-b border-brand-line bg-brand-card"
         style="grid-template-columns: 52px repeat(7, minmax(0, 1fr))"
@@ -53,15 +51,12 @@
         }
       </div>
 
-      <!-- Scrollable body -->
+      <!-- Scrollable grid body -->
       <div class="flex-1 overflow-auto bg-brand-card">
         @if (loading) {
           <p class="p-4 text-sm text-brand-muted">Cargando turnos...</p>
         } @else {
-          <div
-            class="grid"
-            style="grid-template-columns: 52px repeat(7, minmax(0, 1fr))"
-          >
+          <div class="grid" style="grid-template-columns: 52px repeat(7, minmax(0, 1fr))">
             <!-- Hour-label column -->
             <div class="border-r border-brand-line" [style.height.px]="gridHeightPx">
               @for (hour of hourTicks; track hour) {
@@ -89,7 +84,21 @@
                   ></div>
                 }
 
-                <!-- Add button (hoverable) -->
+                <!-- Approved leave overlay -->
+                @for (lr of leavesForDay(day); track lr.id) {
+                  <div
+                    class="pointer-events-none absolute left-0 right-0 z-10 flex items-start gap-1 border-l-2 border-purple-400 bg-purple-50 px-1 py-0.5"
+                    [style.top.px]="0"
+                    [style.height.px]="gridHeightPx"
+                    style="opacity: 0.35"
+                  >
+                    <span class="truncate text-[10px] font-medium text-purple-700">
+                      🏖 {{ getEmployeeName(lr.employeeId) }}
+                    </span>
+                  </div>
+                }
+
+                <!-- Add button (hover) -->
                 @if (canWrite) {
                   <button
                     class="absolute inset-x-1 top-1 z-10 flex items-center justify-center rounded border border-dashed border-brand-line py-0.5 text-xs text-brand-muted opacity-0 transition-opacity hover:opacity-100"
@@ -100,19 +109,42 @@
                   </button>
                 }
 
-                <!-- Schedule blocks -->
+                <!-- Schedule blocks (start on this day) -->
                 @for (s of schedulesForDay(day); track s.id) {
                   <div
-                    class="absolute left-0.5 right-0.5 z-20 cursor-pointer overflow-hidden rounded bg-brand-acc p-1 text-xs leading-tight shadow-sm ring-1 ring-brand-line transition-opacity hover:opacity-80"
+                    class="absolute left-0.5 right-0.5 z-20 cursor-pointer overflow-hidden rounded p-1 text-xs leading-tight shadow-sm transition-opacity hover:opacity-80"
+                    [class.bg-brand-acc]="!hasOutOfAvailabilityWarning(s)"
+                    [class.ring-1]="!hasOutOfAvailabilityWarning(s)"
+                    [class.ring-brand-line]="!hasOutOfAvailabilityWarning(s)"
+                    [class.bg-amber-50]="hasOutOfAvailabilityWarning(s)"
+                    [class.border-2]="hasOutOfAvailabilityWarning(s)"
+                    [class.border-dashed]="hasOutOfAvailabilityWarning(s)"
+                    [class.border-amber-400]="hasOutOfAvailabilityWarning(s)"
                     [style.top.px]="blockTopPx(s)"
                     [style.height.px]="blockHeightPx(s)"
                     (click)="openBlockDetail(s)"
                   >
-                    <div class="truncate font-semibold text-brand-ink">{{ getEmployeeName(s.employeeId) }}</div>
+                    @if (hasOutOfAvailabilityWarning(s)) {
+                      <span class="mr-0.5 text-amber-500">⚠</span>
+                    }
+                    <span class="truncate font-semibold text-brand-ink">{{ getEmployeeName(s.employeeId) }}</span>
                     <div class="text-brand-muted">{{ formatTimeRange(s) }}</div>
                     @if (crossesMidnight(s)) {
                       <div class="mt-px text-[10px] text-brand-muted">&#8618; continúa</div>
                     }
+                  </div>
+                }
+
+                <!-- Continuation blocks (started previous day, ends today) -->
+                @for (s of continuationSchedulesForDay(day); track s.id) {
+                  <div
+                    class="absolute left-0.5 right-0.5 z-20 cursor-pointer overflow-hidden rounded border border-dashed border-brand-line bg-brand-card p-1 text-xs leading-tight opacity-80 shadow-sm transition-opacity hover:opacity-60"
+                    [style.top.px]="0"
+                    [style.height.px]="continuationBlockHeightPx(s)"
+                    (click)="openBlockDetail(s)"
+                  >
+                    <div class="truncate text-brand-muted">{{ continuationLabel(s) }}</div>
+                    <div class="truncate font-semibold text-brand-ink">{{ getEmployeeName(s.employeeId) }}</div>
                   </div>
                 }
               </div>
@@ -150,28 +182,58 @@
   </ui-modal>
 }
 
+<!-- 409 Overlap conflict modal -->
+@if (conflictDetails) {
+  <ui-modal title="Conflicto de solapamiento" (closed)="closeConflictModal()">
+    <p class="mb-3 text-sm text-brand-ink">
+      El empleado ya tiene turnos asignados en las siguientes fechas:
+    </p>
+    <ul class="mb-4 space-y-1">
+      @for (c of conflictDetails; track c.turnoExistenteId) {
+        <li class="flex items-center gap-2 text-sm">
+          <span class="text-amber-500">⚠</span>
+          <span class="text-brand-ink">{{ c.fecha }}</span>
+          <span class="text-xs text-brand-muted">(turno ID: {{ c.turnoExistenteId }})</span>
+        </li>
+      }
+    </ul>
+    <p class="text-xs text-brand-muted">
+      Eliminá o ajustá los turnos existentes antes de asignar uno nuevo en esas fechas.
+    </p>
+    <div class="mt-6 flex justify-end">
+      <button ui-button type="button" (click)="closeConflictModal()">Entendido</button>
+    </div>
+  </ui-modal>
+}
+
 <!-- Block detail modal -->
 @if (selectedSchedule) {
   <ui-modal title="Detalle del turno" (closed)="closeBlockDetail()">
     @if (deleteError) {
       <p class="mb-4 rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ deleteError }}</p>
     }
+    @if (hasOutOfAvailabilityWarning(selectedSchedule)) {
+      <p class="mb-4 flex items-center gap-2 rounded-lg border border-dashed border-amber-400 bg-amber-50 p-3 text-sm text-amber-700">
+        <span>⚠</span>
+        Este turno está fuera de la disponibilidad declarada por el empleado.
+      </p>
+    }
     <div class="flex flex-col gap-2 text-sm">
-      <div class="text-brand-muted">
+      <div>
         <span class="font-medium text-brand-ink">Empleado:</span>
-        {{ getEmployeeName(selectedSchedule.employeeId) }}
+        <span class="ml-1 text-brand-muted">{{ getEmployeeName(selectedSchedule.employeeId) }}</span>
       </div>
-      <div class="text-brand-muted">
+      <div>
         <span class="font-medium text-brand-ink">Horario:</span>
-        {{ formatTimeRange(selectedSchedule) }}
+        <span class="ml-1 text-brand-muted">{{ formatTimeRange(selectedSchedule) }}</span>
       </div>
-      <div class="text-brand-muted">
+      <div>
         <span class="font-medium text-brand-ink">Tipo:</span>
-        {{ selectedSchedule.tipoTurno === 'FIJO' ? 'Fijo' : 'Rotativo' }}
+        <span class="ml-1 text-brand-muted">{{ selectedSchedule.tipoTurno === 'FIJO' ? 'Fijo' : 'Rotativo' }}</span>
       </div>
-      <div class="text-brand-muted">
+      <div>
         <span class="font-medium text-brand-ink">Estado:</span>
-        {{ selectedSchedule.estado }}
+        <span class="ml-1 text-brand-muted">{{ selectedSchedule.estado }}</span>
       </div>
     </div>
     <div class="mt-6 flex justify-end gap-2">
