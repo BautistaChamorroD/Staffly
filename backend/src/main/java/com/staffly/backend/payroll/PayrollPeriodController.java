@@ -17,10 +17,13 @@ import java.util.UUID;
 @RequestMapping("/api/v1/payroll-periods")
 public class PayrollPeriodController {
 
-    private final PayrollPeriodService service;
+    private final PayrollPeriodService      service;
+    private final PayrollPeriodCloseService closeService;
 
-    public PayrollPeriodController(PayrollPeriodService service) {
-        this.service = service;
+    public PayrollPeriodController(PayrollPeriodService service,
+                                   PayrollPeriodCloseService closeService) {
+        this.service      = service;
+        this.closeService = closeService;
     }
 
     @GetMapping
@@ -46,5 +49,13 @@ public class PayrollPeriodController {
             @AuthenticationPrincipal StafflyUserPrincipal principal) {
         PayrollPeriodResponse response = service.create(request, principal);
         return ResponseEntity.created(URI.create("/api/v1/payroll-periods/" + response.id())).body(response);
+    }
+
+    @PostMapping("/{id}/close")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<PayrollPeriodResponse> close(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal StafflyUserPrincipal principal) {
+        return ResponseEntity.ok(closeService.close(id, principal.getCompanyId()));
     }
 }
