@@ -1,12 +1,30 @@
 package com.staffly.backend.payslip;
 
+import com.staffly.backend.advance.Advance;
+import com.staffly.backend.advance.AdvanceRepository;
+import com.staffly.backend.advance.EstadoAdelanto;
+import com.staffly.backend.common.BadRequestException;
 import com.staffly.backend.common.ResourceNotFoundException;
+import com.staffly.backend.common.UnprocessableEntityException;
+import com.staffly.backend.employee.Employee;
+import com.staffly.backend.holiday.Holiday;
+import com.staffly.backend.holiday.HolidayRepository;
+import com.staffly.backend.leave.EstadoLicencia;
+import com.staffly.backend.leave.LeaveRequest;
+import com.staffly.backend.leave.LeaveRequestRepository;
+import com.staffly.backend.payroll.PayrollConfig;
+import com.staffly.backend.payroll.PayrollConfigRepository;
+import com.staffly.backend.payroll.PayrollPeriod;
+import com.staffly.backend.payslip.builder.PayslipBuilder;
+import com.staffly.backend.payslip.builder.PayslipCalculation;
 import com.staffly.backend.payslip.dto.MarkPaidRequest;
 import com.staffly.backend.payslip.dto.PayslipResponse;
+import com.staffly.backend.payslip.dto.VoidPayslipRequest;
+import com.staffly.backend.schedule.Schedule;
+import com.staffly.backend.schedule.ScheduleRepository;
 import com.staffly.backend.security.Rol;
 import com.staffly.backend.security.StafflyUserPrincipal;
 import com.staffly.backend.user.UserRepository;
-import com.staffly.backend.common.BadRequestException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,12 +36,28 @@ import java.util.stream.Collectors;
 @Service
 public class PayslipService {
 
-    private final PayslipRepository payslipRepository;
-    private final UserRepository    userRepository;
+    private final PayslipRepository       payslipRepository;
+    private final UserRepository          userRepository;
+    private final PayrollConfigRepository configRepository;
+    private final ScheduleRepository      scheduleRepository;
+    private final LeaveRequestRepository  leaveRequestRepository;
+    private final HolidayRepository       holidayRepository;
+    private final AdvanceRepository       advanceRepository;
 
-    public PayslipService(PayslipRepository payslipRepository, UserRepository userRepository) {
-        this.payslipRepository = payslipRepository;
-        this.userRepository    = userRepository;
+    public PayslipService(PayslipRepository payslipRepository,
+                          UserRepository userRepository,
+                          PayrollConfigRepository configRepository,
+                          ScheduleRepository scheduleRepository,
+                          LeaveRequestRepository leaveRequestRepository,
+                          HolidayRepository holidayRepository,
+                          AdvanceRepository advanceRepository) {
+        this.payslipRepository     = payslipRepository;
+        this.userRepository        = userRepository;
+        this.configRepository      = configRepository;
+        this.scheduleRepository    = scheduleRepository;
+        this.leaveRequestRepository = leaveRequestRepository;
+        this.holidayRepository     = holidayRepository;
+        this.advanceRepository     = advanceRepository;
     }
 
     @Transactional(readOnly = true)
@@ -67,6 +101,59 @@ public class PayslipService {
                 : LocalDate.now());
 
         return PayslipResponse.from(payslipRepository.save(payslip));
+    }
+
+    @Transactional
+    public PayslipResponse voidAndAdjust(UUID id, VoidPayslipRequest request,
+                                         StafflyUserPrincipal principal) {
+        UUID companyId = principal.getCompanyId();
+
+        Payslip original = payslipRepository.findByIdAndCompanyId(id, companyId)
+                .orElseThrow(() -> new ResourceNotFoundException("No se encontró el recibo"));
+
+        if (original.getEstado() != EstadoRecibo.PAGADO) {
+            throw new UnprocessableEntityException(
+                    "Solo se puede anular un recibo en estado PAGADO");
+        }
+
+        original.setEstado(EstadoRecibo.ANULADO);
+        original.setMotivoAnulacion(request != null ? request.motivoAnulacion() : null);
+        payslipRepository.save(original);
+
+        Employee      employee = original.getEmployee();
+        PayrollPeriod period   = original.getPayrollPeriod();
+
+        PayrollConfig config = configRepository.findByCompanyId(companyId)
+                .orElseThrow(() -> new BadRequestException(
+                        "La empresa no tiene configuración de liquidación"));
+
+        List<LocalDate> holidays = holidayRepository
+                .findByCompanyIdAndFechaBetween(companyId, period.getFechaInicio(), period.getFechaFin())
+                .stream().map(Holiday::getFecha).toList();
+
+        List<Schedule> schedules = scheduleRepository.findByCompanyIdAndEmployeeIdInRange(
+                companyId, employee.getId(),
+                period.getFechaInicio().atStartOfDay(),
+                period.getFechaFin().atTime(23, 59, 59));
+
+        List<LeaveRequest> leaves = leaveRequestRepository.findByCompanyIdAndEmployeeIdAndEstado(
+                companyId, employee.getId(), EstadoLicencia.APROBADA);
+
+        List<Advance> advances = advanceRepository.findByCompanyIdAndEmployeeIdAndEstado(
+                companyId, employee.getId(), EstadoAdelanto.PENDIENTE);
+
+        PayslipCalculation calc = new PayslipBuilder()
+                .withEmployee(employee)
+                .withPeriod(period)
+                .withConfig(config)
+                .withSchedules(schedules)
+                .withHolidays(holidays)
+                .withLeaveRequests(leaves)
+                .withAdvances(advances)
+                .build();
+
+        Payslip adjustment = PayslipFactory.adjustment(companyId, employee, period, calc, id);
+        return PayslipResponse.from(payslipRepository.save(adjustment));
     }
 
     // ── helpers ───────────────────────────────────────────────────────────────

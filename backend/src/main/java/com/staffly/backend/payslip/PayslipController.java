@@ -2,6 +2,7 @@ package com.staffly.backend.payslip;
 
 import com.staffly.backend.payslip.dto.MarkPaidRequest;
 import com.staffly.backend.payslip.dto.PayslipResponse;
+import com.staffly.backend.payslip.dto.VoidPayslipRequest;
 import com.staffly.backend.security.StafflyUserPrincipal;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -53,5 +54,14 @@ public class PayslipController {
             @RequestBody(required = false) MarkPaidRequest request,
             @AuthenticationPrincipal StafflyUserPrincipal principal) {
         return ResponseEntity.ok(payslipService.markPaid(id, request, principal));
+    }
+
+    @PostMapping("/{id}/void")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<PayslipResponse> voidAndAdjust(
+            @PathVariable UUID id,
+            @RequestBody(required = false) VoidPayslipRequest request,
+            @AuthenticationPrincipal StafflyUserPrincipal principal) {
+        return ResponseEntity.ok(payslipService.voidAndAdjust(id, request, principal));
     }
 }
