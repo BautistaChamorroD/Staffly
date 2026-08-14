@@ -41,9 +41,7 @@
           <th class="px-3 py-2 text-left text-xs font-semibold uppercase text-brand-muted">Puesto</th>
           <th class="px-3 py-2 text-left text-xs font-semibold uppercase text-brand-muted">Estado laboral</th>
           <th class="px-3 py-2 text-left text-xs font-semibold uppercase text-brand-muted">Liquidación</th>
-          @if (canWrite) {
-            <th class="px-3 py-2"></th>
-          }
+          <th class="px-3 py-2"></th>
         </tr>
       </thead>
       <tbody>
@@ -60,16 +58,19 @@
                 {{ employee.estadoLiquidacion }}
               </ui-badge>
             </td>
-            @if (canWrite) {
-              <td class="px-3 py-2 text-right">
+            <td class="px-3 py-2 text-right">
+              <button ui-button variant="secondary" size="sm" type="button" (click)="goToAvailability(employee)">
+                Disponibilidad
+              </button>
+              @if (canWrite) {
                 <button ui-button variant="secondary" size="sm" type="button" (click)="openEditModal(employee)">
                   Editar
                 </button>
                 <button ui-button variant="secondary" size="sm" type="button" (click)="openStatusModal(employee)">
                   Cambiar estado
                 </button>
-              </td>
-            }
+              }
+            </td>
           </tr>
         }
       </tbody>

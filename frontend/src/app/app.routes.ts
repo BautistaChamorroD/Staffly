@@ -42,6 +42,14 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'availability',
+    canActivate: [roleGuard(['ADMIN', 'RRHH', 'SUPERVISOR', 'EMPLOYEE']), forcePasswordChangeGuard],
+    loadComponent: () =>
+      import('./features/availability/components/availability-list/availability-list.component').then(
+        (m) => m.AvailabilityListComponent,
+      ),
+  },
+  {
     path: '',
     canActivate: [authGuard, forcePasswordChangeGuard],
     loadComponent: () => import('./core/home/home.component').then((m) => m.HomeComponent),

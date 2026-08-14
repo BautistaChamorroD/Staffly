@@ -41,4 +41,8 @@ export class EmployeeService {
   updateStatus(id: string, request: UpdateEmployeeStatusRequest): Observable<Employee> {
     return this.http.patch<Employee>(`${this.baseUrl}/${id}/status`, request);
   }
+
+  me(): Observable<Employee> {
+    return this.http.get<Employee>(`${this.baseUrl}/me`);
+  }
 }
