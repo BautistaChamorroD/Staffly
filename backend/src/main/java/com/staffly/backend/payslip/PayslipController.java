@@ -3,7 +3,10 @@ package com.staffly.backend.payslip;
 import com.staffly.backend.payslip.dto.MarkPaidRequest;
 import com.staffly.backend.payslip.dto.PayslipResponse;
 import com.staffly.backend.payslip.dto.VoidPayslipRequest;
+import com.staffly.backend.payslip.pdf.PayslipPdfService;
 import com.staffly.backend.security.StafflyUserPrincipal;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -16,10 +19,13 @@ import java.util.UUID;
 @RequestMapping("/api/v1/payslips")
 public class PayslipController {
 
-    private final PayslipService payslipService;
+    private final PayslipService    payslipService;
+    private final PayslipPdfService pdfService;
 
-    public PayslipController(PayslipService payslipService) {
+    public PayslipController(PayslipService payslipService,
+                             PayslipPdfService pdfService) {
         this.payslipService = payslipService;
+        this.pdfService     = pdfService;
     }
 
     @GetMapping
@@ -63,5 +69,17 @@ public class PayslipController {
             @RequestBody(required = false) VoidPayslipRequest request,
             @AuthenticationPrincipal StafflyUserPrincipal principal) {
         return ResponseEntity.ok(payslipService.voidAndAdjust(id, request, principal));
+    }
+
+    @GetMapping("/{id}/pdf")
+    @PreAuthorize("hasAnyRole('ADMIN', 'RRHH', 'EMPLOYEE')")
+    public ResponseEntity<byte[]> getPdf(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal StafflyUserPrincipal principal) {
+        byte[] pdf = pdfService.generatePdf(id, principal);
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=recibo-" + id + ".pdf")
+                .body(pdf);
     }
 }
