@@ -50,6 +50,14 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'schedules',
+    canActivate: [roleGuard(['ADMIN', 'RRHH', 'SUPERVISOR']), forcePasswordChangeGuard],
+    loadComponent: () =>
+      import('./features/schedules/components/schedule-builder/schedule-builder.component').then(
+        (m) => m.ScheduleBuilderComponent,
+      ),
+  },
+  {
     path: '',
     canActivate: [authGuard, forcePasswordChangeGuard],
     loadComponent: () => import('./core/home/home.component').then((m) => m.HomeComponent),

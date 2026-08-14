@@ -1,0 +1,184 @@
+<main class="flex h-screen flex-col px-4 pt-6 pb-4 overflow-hidden">
+  <!-- Header bar -->
+  <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+    <h1 class="font-heading text-2xl font-bold text-brand-ink">Horarios</h1>
+
+    <div class="flex flex-wrap items-center gap-3">
+      <!-- Week navigation -->
+      <div class="flex items-center gap-1">
+        <button ui-button variant="secondary" size="sm" type="button" (click)="prevWeek()">&#8592;</button>
+        <span class="min-w-[200px] text-center text-sm font-medium text-brand-ink">{{ weekLabel }}</span>
+        <button ui-button variant="secondary" size="sm" type="button" (click)="nextWeek()">&#8594;</button>
+      </div>
+
+      <!-- Branch selector -->
+      @if (branchesError) {
+        <p class="text-sm text-badge-error-ink" role="alert">{{ branchesError }}</p>
+      } @else {
+        <form [formGroup]="filterForm" class="w-44">
+          <ui-select formControlName="branchId" [options]="branchOptions" placeholder="Sucursal"></ui-select>
+        </form>
+      }
+
+      @if (canWrite && selectedBranchId) {
+        <button ui-button type="button" (click)="openCreateModal()">+ Nuevo turno</button>
+      }
+    </div>
+  </div>
+
+  @if (loadError) {
+    <p class="mb-2 rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ loadError }}</p>
+  }
+
+  @if (!selectedBranchId) {
+    <p class="text-sm text-brand-muted">Seleccioná una sucursal para ver los horarios.</p>
+  } @else {
+    <!-- Grid container -->
+    <div class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-brand-line">
+      <!-- Day-header row (sticky) -->
+      <div
+        class="grid shrink-0 border-b border-brand-line bg-brand-card"
+        style="grid-template-columns: 52px repeat(7, minmax(0, 1fr))"
+      >
+        <div class="border-r border-brand-line"></div>
+        @for (day of weekDays; track day.getTime()) {
+          <div
+            class="border-r border-brand-line px-1 py-2 text-center text-xs font-semibold uppercase last:border-r-0"
+            [class.bg-brand-acc]="isWeekend(day)"
+            [class.text-brand-muted]="isWeekend(day)"
+            [class.text-brand-ink]="!isWeekend(day)"
+          >
+            {{ formatDayHeader(day) }}
+          </div>
+        }
+      </div>
+
+      <!-- Scrollable body -->
+      <div class="flex-1 overflow-auto bg-brand-card">
+        @if (loading) {
+          <p class="p-4 text-sm text-brand-muted">Cargando turnos...</p>
+        } @else {
+          <div
+            class="grid"
+            style="grid-template-columns: 52px repeat(7, minmax(0, 1fr))"
+          >
+            <!-- Hour-label column -->
+            <div class="border-r border-brand-line" [style.height.px]="gridHeightPx">
+              @for (hour of hourTicks; track hour) {
+                <div
+                  class="flex items-start justify-end pr-1 pt-px text-xs text-brand-muted"
+                  [style.height.px]="PIXELS_PER_HOUR"
+                >
+                  {{ hour }}:00
+                </div>
+              }
+            </div>
+
+            <!-- Day columns -->
+            @for (day of weekDays; track day.getTime()) {
+              <div
+                class="relative border-r border-brand-line last:border-r-0"
+                [class.bg-brand-acc]="isWeekend(day)"
+                [style.height.px]="gridHeightPx"
+              >
+                <!-- Hour grid lines -->
+                @for (hour of hourTicks; track hour) {
+                  <div
+                    class="pointer-events-none absolute left-0 right-0 border-t border-brand-line opacity-30"
+                    [style.top.px]="(hour - visibleStartHour) * PIXELS_PER_HOUR"
+                  ></div>
+                }
+
+                <!-- Add button (hoverable) -->
+                @if (canWrite) {
+                  <button
+                    class="absolute inset-x-1 top-1 z-10 flex items-center justify-center rounded border border-dashed border-brand-line py-0.5 text-xs text-brand-muted opacity-0 transition-opacity hover:opacity-100"
+                    type="button"
+                    (click)="openCreateModal(day)"
+                  >
+                    +
+                  </button>
+                }
+
+                <!-- Schedule blocks -->
+                @for (s of schedulesForDay(day); track s.id) {
+                  <div
+                    class="absolute left-0.5 right-0.5 z-20 cursor-pointer overflow-hidden rounded bg-brand-acc p-1 text-xs leading-tight shadow-sm ring-1 ring-brand-line transition-opacity hover:opacity-80"
+                    [style.top.px]="blockTopPx(s)"
+                    [style.height.px]="blockHeightPx(s)"
+                    (click)="openBlockDetail(s)"
+                  >
+                    <div class="truncate font-semibold text-brand-ink">{{ getEmployeeName(s.employeeId) }}</div>
+                    <div class="text-brand-muted">{{ formatTimeRange(s) }}</div>
+                    @if (crossesMidnight(s)) {
+                      <div class="mt-px text-[10px] text-brand-muted">&#8618; continúa</div>
+                    }
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  }
+</main>
+
+<!-- Create modal -->
+@if (formOpen) {
+  <ui-modal title="Nuevo turno" (closed)="closeCreateModal()">
+    @if (formError) {
+      <p class="mb-4 rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ formError }}</p>
+    }
+    <form [formGroup]="slotForm" class="flex flex-col gap-4">
+      <ui-select
+        label="Empleado"
+        formControlName="employeeId"
+        [options]="employeeOptions"
+        placeholder="Seleccioná un empleado"
+      ></ui-select>
+      <ui-input label="Inicio" type="datetime-local" formControlName="fechaHoraInicio"></ui-input>
+      <ui-input label="Fin" type="datetime-local" formControlName="fechaHoraFin"></ui-input>
+      <ui-select label="Tipo de turno" formControlName="tipoTurno" [options]="tipoTurnoOptions"></ui-select>
+    </form>
+    <div class="mt-6 flex justify-end gap-2">
+      <button ui-button variant="secondary" type="button" (click)="closeCreateModal()">Cancelar</button>
+      <button ui-button type="button" [disabled]="slotForm.invalid" (click)="handleCreateSubmit()">
+        Guardar
+      </button>
+    </div>
+  </ui-modal>
+}
+
+<!-- Block detail modal -->
+@if (selectedSchedule) {
+  <ui-modal title="Detalle del turno" (closed)="closeBlockDetail()">
+    @if (deleteError) {
+      <p class="mb-4 rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ deleteError }}</p>
+    }
+    <div class="flex flex-col gap-2 text-sm">
+      <div class="text-brand-muted">
+        <span class="font-medium text-brand-ink">Empleado:</span>
+        {{ getEmployeeName(selectedSchedule.employeeId) }}
+      </div>
+      <div class="text-brand-muted">
+        <span class="font-medium text-brand-ink">Horario:</span>
+        {{ formatTimeRange(selectedSchedule) }}
+      </div>
+      <div class="text-brand-muted">
+        <span class="font-medium text-brand-ink">Tipo:</span>
+        {{ selectedSchedule.tipoTurno === 'FIJO' ? 'Fijo' : 'Rotativo' }}
+      </div>
+      <div class="text-brand-muted">
+        <span class="font-medium text-brand-ink">Estado:</span>
+        {{ selectedSchedule.estado }}
+      </div>
+    </div>
+    <div class="mt-6 flex justify-end gap-2">
+      <button ui-button variant="secondary" type="button" (click)="closeBlockDetail()">Cerrar</button>
+      @if (canWrite) {
+        <button ui-button type="button" (click)="confirmDelete()">Eliminar turno</button>
+      }
+    </div>
+  </ui-modal>
+}
