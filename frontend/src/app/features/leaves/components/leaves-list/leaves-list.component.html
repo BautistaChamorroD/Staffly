@@ -1,0 +1,176 @@
+<main class="mx-auto max-w-4xl px-4 py-8">
+  <div class="mb-4 flex items-center justify-between">
+    <h1 class="font-heading text-2xl font-bold text-brand-ink">Licencias</h1>
+    @if (canRequest) {
+      <button ui-button type="button" (click)="openCreateModal()">+ Nueva solicitud</button>
+    }
+  </div>
+
+  <!-- Filter -->
+  <form [formGroup]="filterForm" class="mb-6 w-48">
+    <ui-select
+      formControlName="estado"
+      [options]="estadoOptions"
+      placeholder="Todos los estados"
+    ></ui-select>
+  </form>
+
+  @if (loadError) {
+    <p class="mb-4 rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ loadError }}</p>
+  }
+
+  @if (loading) {
+    <p class="text-sm text-brand-muted">Cargando licencias...</p>
+  } @else if (leaveRequests.length === 0) {
+    <p class="text-sm text-brand-muted">No hay solicitudes con estos filtros.</p>
+  } @else {
+    <div class="flex flex-col gap-4">
+      @for (lr of leaveRequests; track lr.id) {
+        <div class="rounded-lg border border-brand-line bg-brand-card p-4">
+          <!-- Card header: estado + conflict warning -->
+          <div class="mb-3 flex flex-wrap items-center gap-2">
+            <ui-badge [variant]="estadoVariant(lr.estado)">{{ estadoLabel(lr.estado) }}</ui-badge>
+            @if (hasScheduleConflict(lr)) {
+              <span
+                class="flex items-center gap-1 rounded-md border border-dashed border-amber-400 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700"
+              >
+                ⚠ Tiene turnos asignados en este período — aprobar generará un conflicto
+              </span>
+            }
+          </div>
+
+          <!-- Card body -->
+          <div class="grid gap-1 text-sm sm:grid-cols-2">
+            @if (!isEmployee) {
+              <div>
+                <span class="font-medium text-brand-ink">Empleado:</span>
+                <span class="ml-1 text-brand-muted">{{ getEmployeeName(lr.employeeId) }}</span>
+              </div>
+            }
+            <div>
+              <span class="font-medium text-brand-ink">Tipo:</span>
+              <span class="ml-1 text-brand-muted">{{ lr.leaveTypeNombre }}</span>
+            </div>
+            <div>
+              <span class="font-medium text-brand-ink">Período:</span>
+              <span class="ml-1 text-brand-muted">{{ lr.fechaInicio }} — {{ lr.fechaFin }}</span>
+            </div>
+            @if (lr.motivo) {
+              <div class="sm:col-span-2">
+                <span class="font-medium text-brand-ink">Motivo:</span>
+                <span class="ml-1 text-brand-muted">{{ lr.motivo }}</span>
+              </div>
+            }
+            @if (lr.motivoRechazo) {
+              <div class="sm:col-span-2">
+                <span class="font-medium text-brand-ink">Motivo de rechazo:</span>
+                <span class="ml-1 text-badge-error-ink">{{ lr.motivoRechazo }}</span>
+              </div>
+            }
+          </div>
+
+          <!-- Actions -->
+          @if (lr.estado === 'PENDIENTE' && canApprove) {
+            <div class="mt-4 flex flex-wrap gap-2">
+              <button ui-button size="sm" type="button" (click)="approve(lr)">Aprobar</button>
+              <button ui-button variant="secondary" size="sm" type="button" (click)="openRejectModal(lr)">
+                Rechazar
+              </button>
+            </div>
+          }
+          @if (canCancel(lr)) {
+            <div class="mt-3">
+              <button
+                ui-button
+                variant="secondary"
+                size="sm"
+                type="button"
+                (click)="cancel(lr)"
+              >
+                Cancelar solicitud
+              </button>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+</main>
+
+<!-- Create modal -->
+@if (formOpen) {
+  <ui-modal title="Nueva solicitud de licencia" (closed)="closeCreateModal()">
+    @if (formError) {
+      <p class="mb-4 rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ formError }}</p>
+    }
+    <form [formGroup]="createForm" class="flex flex-col gap-4">
+      @if (!isEmployee) {
+        <ui-select
+          label="Empleado"
+          formControlName="employeeId"
+          [options]="employeeOptions"
+          placeholder="Seleccioná un empleado"
+        ></ui-select>
+      }
+      <ui-select
+        label="Tipo de licencia"
+        formControlName="leaveTypeId"
+        [options]="leaveTypeOptions"
+        placeholder="Seleccioná un tipo"
+      ></ui-select>
+      <ui-input label="Fecha de inicio" type="date" formControlName="fechaInicio"></ui-input>
+      <ui-input label="Fecha de fin" type="date" formControlName="fechaFin"></ui-input>
+      <ui-input label="Motivo (opcional)" placeholder="Describí el motivo" formControlName="motivo"></ui-input>
+    </form>
+    <div class="mt-6 flex justify-end gap-2">
+      <button ui-button variant="secondary" type="button" (click)="closeCreateModal()">Cancelar</button>
+      <button ui-button type="button" [disabled]="createForm.invalid" (click)="handleCreateSubmit()">
+        Enviar solicitud
+      </button>
+    </div>
+  </ui-modal>
+}
+
+<!-- Reject modal -->
+@if (rejectTarget) {
+  <ui-modal title="Rechazar solicitud" (closed)="closeRejectModal()">
+    @if (rejectError) {
+      <p class="mb-4 rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ rejectError }}</p>
+    }
+    <p class="mb-4 text-sm text-brand-muted">
+      Indicá el motivo del rechazo para
+      <strong class="text-brand-ink">{{ getEmployeeName(rejectTarget.employeeId) }}</strong>
+      ({{ rejectTarget.fechaInicio }} — {{ rejectTarget.fechaFin }}).
+    </p>
+    <form [formGroup]="rejectForm">
+      <ui-input label="Motivo" placeholder="Explicá el motivo del rechazo" formControlName="motivo"></ui-input>
+    </form>
+    <div class="mt-6 flex justify-end gap-2">
+      <button ui-button variant="secondary" type="button" (click)="closeRejectModal()">Cancelar</button>
+      <button ui-button type="button" [disabled]="rejectForm.invalid" (click)="confirmReject()">
+        Confirmar rechazo
+      </button>
+    </div>
+  </ui-modal>
+}
+
+<!-- Approve 409 conflict modal -->
+@if (approveConflict) {
+  <ui-modal title="No se pudo aprobar — conflicto de turnos" (closed)="closeApproveConflict()">
+    <p class="mb-3 text-sm text-brand-ink">
+      El empleado tiene turnos asignados que se superponen con este período de licencia. Eliminá los
+      turnos conflictivos desde la pantalla de Horarios antes de aprobar.
+    </p>
+    <ul class="mb-4 space-y-1">
+      @for (turnoId of approveConflict; track turnoId) {
+        <li class="flex items-center gap-2 text-xs text-brand-muted">
+          <span class="text-amber-500">⚠</span>
+          Turno: {{ turnoId }}
+        </li>
+      }
+    </ul>
+    <div class="mt-6 flex justify-end">
+      <button ui-button type="button" (click)="closeApproveConflict()">Entendido</button>
+    </div>
+  </ui-modal>
+}

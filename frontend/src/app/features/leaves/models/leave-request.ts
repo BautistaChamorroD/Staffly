@@ -12,6 +12,18 @@ export interface LeaveRequest {
   motivoRechazo: string | null;
 }
 
+export interface CreateLeaveRequestRequest {
+  employeeId?: string; // only for ADMIN / RRHH on behalf of employee
+  leaveTypeId: string;
+  fechaInicio: string;
+  fechaFin: string;
+  motivo?: string;
+}
+
+export interface RejectLeaveRequestRequest {
+  motivo: string;
+}
+
 export interface LeaveRequestFilters {
   employeeId?: string;
   estado?: EstadoLicencia;

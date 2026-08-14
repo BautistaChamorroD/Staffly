@@ -58,6 +58,14 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'leaves',
+    canActivate: [roleGuard(['ADMIN', 'RRHH', 'SUPERVISOR', 'EMPLOYEE']), forcePasswordChangeGuard],
+    loadComponent: () =>
+      import('./features/leaves/components/leaves-list/leaves-list.component').then(
+        (m) => m.LeavesListComponent,
+      ),
+  },
+  {
     path: '',
     canActivate: [authGuard, forcePasswordChangeGuard],
     loadComponent: () => import('./core/home/home.component').then((m) => m.HomeComponent),

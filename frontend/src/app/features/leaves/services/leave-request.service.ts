@@ -3,7 +3,12 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { environment } from '../../../../environments/environment';
-import { LeaveRequest, LeaveRequestFilters } from '../models/leave-request';
+import {
+  CreateLeaveRequestRequest,
+  LeaveRequest,
+  LeaveRequestFilters,
+  RejectLeaveRequestRequest,
+} from '../models/leave-request';
 
 @Injectable({ providedIn: 'root' })
 export class LeaveRequestService {
@@ -15,5 +20,21 @@ export class LeaveRequestService {
     if (filters.employeeId) params = params.set('employeeId', filters.employeeId);
     if (filters.estado) params = params.set('estado', filters.estado);
     return this.http.get<LeaveRequest[]>(this.baseUrl, { params });
+  }
+
+  create(request: CreateLeaveRequestRequest): Observable<LeaveRequest> {
+    return this.http.post<LeaveRequest>(this.baseUrl, request);
+  }
+
+  approve(id: string): Observable<LeaveRequest> {
+    return this.http.post<LeaveRequest>(`${this.baseUrl}/${id}/approve`, {});
+  }
+
+  reject(id: string, request: RejectLeaveRequestRequest): Observable<LeaveRequest> {
+    return this.http.post<LeaveRequest>(`${this.baseUrl}/${id}/reject`, request);
+  }
+
+  cancel(id: string): Observable<LeaveRequest> {
+    return this.http.post<LeaveRequest>(`${this.baseUrl}/${id}/cancel`, {});
   }
 }
