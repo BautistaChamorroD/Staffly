@@ -1,0 +1,92 @@
+<main class="mx-auto max-w-4xl px-4 py-8">
+  <div class="mb-4 flex items-center justify-between">
+    <h1 class="font-heading text-2xl font-bold text-brand-ink">Disponibilidad</h1>
+    @if (canWrite && employeeId) {
+      <button ui-button type="button" (click)="openCreateModal()">+ Agregar franja</button>
+    }
+  </div>
+
+  @if (resolveError) {
+    <p class="rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ resolveError }}</p>
+  } @else if (loading) {
+    <p class="text-sm text-brand-muted">Cargando disponibilidad...</p>
+  } @else if (loadError) {
+    <p class="rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ loadError }}</p>
+  } @else if (slots.length === 0) {
+    <p class="text-sm text-brand-muted">No hay franjas de disponibilidad cargadas.</p>
+  } @else {
+    <ui-table>
+      <thead>
+        <tr>
+          <th class="px-3 py-2 text-left text-xs font-semibold uppercase text-brand-muted">Día</th>
+          <th class="px-3 py-2 text-left text-xs font-semibold uppercase text-brand-muted">Inicio</th>
+          <th class="px-3 py-2 text-left text-xs font-semibold uppercase text-brand-muted">Fin</th>
+          @if (canWrite) {
+            <th class="px-3 py-2"></th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        @for (slot of slots; track slot.id) {
+          <tr class="border-b border-brand-line">
+            <td class="px-3 py-2 text-brand-ink">{{ diaLabels[slot.diaSemana] }}</td>
+            <td class="px-3 py-2 text-brand-ink">{{ formatTime(slot.horaInicio) }}</td>
+            <td class="px-3 py-2 text-brand-ink">{{ formatTime(slot.horaFin) }}</td>
+            @if (canWrite) {
+              <td class="px-3 py-2 text-right">
+                <button ui-button variant="secondary" size="sm" type="button" (click)="openEditModal(slot)">
+                  Editar
+                </button>
+                <button ui-button variant="secondary" size="sm" type="button" (click)="openDeleteModal(slot)">
+                  Eliminar
+                </button>
+              </td>
+            }
+          </tr>
+        }
+      </tbody>
+    </ui-table>
+  }
+</main>
+
+@if (formMode) {
+  <ui-modal
+    [title]="formMode === 'create' ? 'Agregar franja' : 'Editar franja'"
+    (closed)="closeFormModal()"
+  >
+    @if (formError) {
+      <p class="mb-4 rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ formError }}</p>
+    }
+    <form [formGroup]="slotForm" class="flex flex-col gap-4">
+      <ui-select
+        label="Día de la semana"
+        formControlName="diaSemana"
+        [options]="diaSemanaOptions"
+        placeholder="Seleccioná un día"
+      ></ui-select>
+      <ui-input label="Hora de inicio" type="time" formControlName="horaInicio"></ui-input>
+      <ui-input label="Hora de fin" type="time" formControlName="horaFin"></ui-input>
+    </form>
+    <div class="mt-6 flex justify-end gap-2">
+      <button ui-button variant="secondary" type="button" (click)="closeFormModal()">Cancelar</button>
+      <button ui-button type="button" [disabled]="slotForm.invalid" (click)="handleFormSubmit()">Guardar</button>
+    </div>
+  </ui-modal>
+}
+
+@if (deleteTarget) {
+  <ui-modal title="Eliminar franja" (closed)="closeDeleteModal()">
+    @if (deleteError) {
+      <p class="mb-4 rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ deleteError }}</p>
+    }
+    <p class="text-sm text-brand-ink">
+      ¿Confirmás eliminar la franja del
+      <strong>{{ diaLabels[deleteTarget.diaSemana] }}</strong>
+      de {{ formatTime(deleteTarget.horaInicio) }} a {{ formatTime(deleteTarget.horaFin) }}?
+    </p>
+    <div class="mt-6 flex justify-end gap-2">
+      <button ui-button variant="secondary" type="button" (click)="closeDeleteModal()">Cancelar</button>
+      <button ui-button type="button" (click)="confirmDelete()">Eliminar</button>
+    </div>
+  </ui-modal>
+}

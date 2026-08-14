@@ -1,6 +1,7 @@
 import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { debounceTime, distinctUntilChanged, merge } from 'rxjs';
 
 import { AuthService } from '../../../../core/services/auth.service';
@@ -42,6 +43,7 @@ export class EmployeesListComponent implements OnInit {
   private employeeService = inject(EmployeeService);
   private branchService = inject(BranchService);
   private authService = inject(AuthService);
+  private router = inject(Router);
   private fb = inject(FormBuilder);
   private destroyRef = inject(DestroyRef);
 
@@ -195,6 +197,10 @@ export class EmployeesListComponent implements OnInit {
         },
       });
     }
+  }
+
+  goToAvailability(employee: Employee): void {
+    this.router.navigate(['/availability'], { queryParams: { employeeId: employee.id } });
   }
 
   openStatusModal(employee: Employee): void {
