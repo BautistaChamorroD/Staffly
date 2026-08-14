@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -69,4 +70,16 @@ public interface ScheduleRepository extends JpaRepository<Schedule, UUID> {
             @Param("employeeId") UUID employeeId,
             @Param("inicio") LocalDateTime inicio,
             @Param("fin") LocalDateTime fin);
+
+    @Query("""
+        SELECT s FROM Schedule s WHERE s.companyId = :companyId
+        AND s.employee.id = :employeeId
+        AND s.fechaHoraInicio >= :desde
+        AND s.fechaHoraInicio <= :hasta
+    """)
+    List<Schedule> findByCompanyIdAndEmployeeIdInRange(
+            @Param("companyId") UUID companyId,
+            @Param("employeeId") UUID employeeId,
+            @Param("desde") LocalDateTime desde,
+            @Param("hasta") LocalDateTime hasta);
 }

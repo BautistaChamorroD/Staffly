@@ -36,4 +36,16 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, UUID
     List<LeaveRequest> findByCompanyIdAndEmployeeIdWithDetails(
             @Param("companyId") UUID companyId,
             @Param("employeeId") UUID employeeId);
+
+    @Query("""
+        SELECT lr FROM LeaveRequest lr
+        JOIN FETCH lr.leaveType
+        WHERE lr.companyId = :companyId
+          AND lr.employee.id = :employeeId
+          AND lr.estado = :estado
+    """)
+    List<LeaveRequest> findByCompanyIdAndEmployeeIdAndEstado(
+            @Param("companyId") UUID companyId,
+            @Param("employeeId") UUID employeeId,
+            @Param("estado") EstadoLicencia estado);
 }
