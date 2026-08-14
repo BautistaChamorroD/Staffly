@@ -3,8 +3,12 @@ package com.staffly.backend.payroll;
 import com.staffly.backend.common.BadRequestException;
 import com.staffly.backend.common.ConflictException;
 import com.staffly.backend.common.ResourceNotFoundException;
+import com.staffly.backend.common.UnprocessableEntityException;
 import com.staffly.backend.payroll.dto.CreatePayrollPeriodRequest;
 import com.staffly.backend.payroll.dto.PayrollPeriodResponse;
+import com.staffly.backend.payslip.EstadoRecibo;
+import com.staffly.backend.payslip.Payslip;
+import com.staffly.backend.payslip.PayslipRepository;
 import com.staffly.backend.security.StafflyUserPrincipal;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,9 +20,12 @@ import java.util.UUID;
 public class PayrollPeriodService {
 
     private final PayrollPeriodRepository repository;
+    private final PayslipRepository       payslipRepository;
 
-    public PayrollPeriodService(PayrollPeriodRepository repository) {
-        this.repository = repository;
+    public PayrollPeriodService(PayrollPeriodRepository repository,
+                                PayslipRepository payslipRepository) {
+        this.repository        = repository;
+        this.payslipRepository = payslipRepository;
     }
 
     @Transactional(readOnly = true)
@@ -55,6 +62,35 @@ public class PayrollPeriodService {
         period.setFechaInicio(request.fechaInicio());
         period.setFechaFin(request.fechaFin());
         period.setEstado(EstadoPeriodo.ABIERTO);
+
+        return PayrollPeriodResponse.from(repository.save(period));
+    }
+
+    @Transactional
+    public PayrollPeriodResponse reopen(UUID id, StafflyUserPrincipal principal) {
+        UUID companyId = principal.getCompanyId();
+
+        PayrollPeriod period = repository.findByIdAndCompanyId(id, companyId)
+                .orElseThrow(() -> new ResourceNotFoundException("No se encontró el período"));
+
+        if (period.getEstado() != EstadoPeriodo.CERRADO) {
+            throw new ConflictException("Solo se puede reabrir un período CERRADO");
+        }
+
+        if (repository.existsByCompanyIdAndFechaInicioAfterAndEstado(
+                companyId, period.getFechaFin(), EstadoPeriodo.CERRADO)) {
+            throw new UnprocessableEntityException(
+                    "No se puede reabrir el período: existe un período posterior ya cerrado");
+        }
+
+        period.setEstado(EstadoPeriodo.REABIERTO);
+        period.setFechaCierre(null);
+
+        List<Payslip> payslips = payslipRepository.findByCompanyIdAndPayrollPeriodId(companyId, id);
+        payslips.forEach(p -> {
+            p.setEstado(EstadoRecibo.GENERADO);
+            p.setFechaPago(null);
+        });
 
         return PayrollPeriodResponse.from(repository.save(period));
     }

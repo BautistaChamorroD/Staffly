@@ -2,6 +2,7 @@ package com.staffly.backend.payroll;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -15,4 +16,6 @@ public interface PayrollPeriodRepository extends JpaRepository<PayrollPeriod, UU
     Optional<PayrollPeriod> findByIdAndCompanyId(UUID id, UUID companyId);
 
     boolean existsByCompanyIdAndEstadoIn(UUID companyId, List<EstadoPeriodo> estados);
+
+    boolean existsByCompanyIdAndFechaInicioAfterAndEstado(UUID companyId, LocalDate fechaInicio, EstadoPeriodo estado);
 }
