@@ -58,4 +58,12 @@ public class PayrollPeriodController {
             @AuthenticationPrincipal StafflyUserPrincipal principal) {
         return ResponseEntity.ok(closeService.close(id, principal.getCompanyId()));
     }
+
+    @PostMapping("/{id}/reopen")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<PayrollPeriodResponse> reopen(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal StafflyUserPrincipal principal) {
+        return ResponseEntity.ok(service.reopen(id, principal));
+    }
 }

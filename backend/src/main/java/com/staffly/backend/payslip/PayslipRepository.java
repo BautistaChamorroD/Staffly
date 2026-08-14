@@ -20,4 +20,7 @@ public interface PayslipRepository extends JpaRepository<Payslip, UUID> {
     Optional<Payslip> findByIdAndCompanyId(@Param("id") UUID id, @Param("companyId") UUID companyId);
 
     boolean existsByPayrollPeriodIdAndCompanyId(UUID payrollPeriodId, UUID companyId);
+
+    @Query("SELECT p FROM Payslip p WHERE p.companyId = :companyId AND p.payrollPeriod.id = :periodId")
+    List<Payslip> findByCompanyIdAndPayrollPeriodId(@Param("companyId") UUID companyId, @Param("periodId") UUID periodId);
 }

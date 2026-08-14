@@ -83,6 +83,12 @@ public class GlobalExceptionHandler {
                 .body(ApiError.of("VALIDATION_ERROR", ex.getMessage()));
     }
 
+    @ExceptionHandler(UnprocessableEntityException.class)
+    public ResponseEntity<ApiError> handleUnprocessable(UnprocessableEntityException ex) {
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .body(ApiError.of("UNPROCESSABLE_ENTITY", ex.getMessage()));
+    }
+
     /**
      * Red de seguridad para constraints de la base (UNIQUE, FK) que una
      * carrera entre dos requests puede violar aunque el servicio haya
