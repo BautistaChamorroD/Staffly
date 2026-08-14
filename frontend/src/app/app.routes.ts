@@ -66,6 +66,14 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'payroll/periods',
+    canActivate: [roleGuard(['ADMIN', 'RRHH']), forcePasswordChangeGuard],
+    loadComponent: () =>
+      import('./features/payroll/components/payroll-periods/payroll-periods.component').then(
+        (m) => m.PayrollPeriodsComponent,
+      ),
+  },
+  {
     path: '',
     canActivate: [authGuard, forcePasswordChangeGuard],
     loadComponent: () => import('./core/home/home.component').then((m) => m.HomeComponent),

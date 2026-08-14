@@ -1,0 +1,126 @@
+<main class="mx-auto max-w-5xl px-4 py-8">
+  <div class="mb-4 flex items-center justify-between">
+    <h1 class="font-heading text-2xl font-bold text-brand-ink">Períodos de liquidación</h1>
+    <button ui-button type="button" (click)="openCreateModal()">+ Abrir período</button>
+  </div>
+
+  @if (loading) {
+    <p class="text-sm text-brand-muted">Cargando períodos...</p>
+  } @else if (loadError) {
+    <p class="rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ loadError }}</p>
+  } @else if (periods.length === 0) {
+    <p class="text-sm text-brand-muted">Todavía no hay períodos cargados.</p>
+  } @else {
+    <ui-table>
+      <thead>
+        <tr>
+          <th class="px-3 py-2 text-left text-xs font-semibold uppercase text-brand-muted">Inicio</th>
+          <th class="px-3 py-2 text-left text-xs font-semibold uppercase text-brand-muted">Fin</th>
+          <th class="px-3 py-2 text-left text-xs font-semibold uppercase text-brand-muted">Estado</th>
+          <th class="px-3 py-2 text-left text-xs font-semibold uppercase text-brand-muted">Cierre</th>
+          @if (isAdmin) {
+            <th class="px-3 py-2"></th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        @for (period of periods; track period.id) {
+          <tr class="border-b border-brand-line">
+            <td class="px-3 py-2 tabular-nums">{{ period.fechaInicio }}</td>
+            <td class="px-3 py-2 tabular-nums">{{ period.fechaFin }}</td>
+            <td class="px-3 py-2">
+              <ui-badge [variant]="badgeVariant(period.estado)">{{ period.estado }}</ui-badge>
+            </td>
+            <td class="px-3 py-2 tabular-nums text-brand-muted">
+              {{ period.fechaCierre ?? '—' }}
+            </td>
+            @if (isAdmin) {
+              <td class="px-3 py-2 text-right">
+                @if (period.estado === 'ABIERTO' || period.estado === 'REABIERTO') {
+                  <button ui-button variant="secondary" size="sm" type="button" (click)="openCloseConfirm(period)">
+                    Cerrar
+                  </button>
+                }
+                @if (period.estado === 'CERRADO') {
+                  <button ui-button variant="secondary" size="sm" type="button" (click)="openReopenConfirm(period)">
+                    Reabrir
+                  </button>
+                }
+              </td>
+            }
+          </tr>
+        }
+      </tbody>
+    </ui-table>
+  }
+</main>
+
+<!-- Modal: crear período -->
+@if (showCreateModal) {
+  <ui-modal title="Abrir período" (closed)="closeCreateModal()">
+    @if (createError) {
+      <p class="mb-4 rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ createError }}</p>
+    }
+    <form [formGroup]="createForm" (ngSubmit)="submitCreate()" class="space-y-4">
+      <ui-input
+        label="Fecha de inicio"
+        type="date"
+        formControlName="fechaInicio"
+        [errorMessage]="fechaInicioCtrl.invalid && fechaInicioCtrl.touched ? 'La fecha de inicio es requerida.' : undefined"
+      ></ui-input>
+      <ui-input
+        label="Fecha de fin"
+        type="date"
+        formControlName="fechaFin"
+        [errorMessage]="fechaFinCtrl.invalid && fechaFinCtrl.touched ? 'La fecha de fin es requerida.' : undefined"
+      ></ui-input>
+      <div class="flex justify-end gap-2 pt-2">
+        <button ui-button variant="secondary" type="button" (click)="closeCreateModal()">Cancelar</button>
+        <button ui-button type="submit" [disabled]="creating">
+          {{ creating ? 'Creando...' : 'Crear período' }}
+        </button>
+      </div>
+    </form>
+  </ui-modal>
+}
+
+<!-- Modal: confirmar cierre -->
+@if (closeTarget) {
+  <ui-modal title="Cerrar período" (closed)="cancelClose()">
+    @if (closeError) {
+      <p class="mb-4 rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ closeError }}</p>
+    }
+    <p class="text-sm text-brand-ink">
+      Esta operación va a generar y marcar como pagados los recibos de todos los empleados activos
+      (y los dados de baja con liquidación pendiente) del período
+      <strong>{{ closeTarget.fechaInicio }} — {{ closeTarget.fechaFin }}</strong>.
+    </p>
+    <p class="mt-2 text-sm font-semibold text-brand-ink">Esta acción no se puede deshacer sin reabrir el período.</p>
+    <div class="mt-6 flex justify-end gap-2">
+      <button ui-button variant="secondary" type="button" (click)="cancelClose()">Cancelar</button>
+      <button ui-button type="button" [disabled]="closing" (click)="confirmClose()">
+        {{ closing ? 'Cerrando...' : 'Confirmar cierre' }}
+      </button>
+    </div>
+  </ui-modal>
+}
+
+<!-- Modal: confirmar reapertura -->
+@if (reopenTarget) {
+  <ui-modal title="Reabrir período" (closed)="cancelReopen()">
+    @if (reopenError) {
+      <p class="mb-4 rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ reopenError }}</p>
+    }
+    <p class="text-sm text-brand-ink">
+      Al reabrir el período
+      <strong>{{ reopenTarget.fechaInicio }} — {{ reopenTarget.fechaFin }}</strong>,
+      todos los recibos ya emitidos quedarán en estado <strong>GENERADO</strong> hasta que se revisen y se vuelva a cerrar.
+    </p>
+    <div class="mt-6 flex justify-end gap-2">
+      <button ui-button variant="secondary" type="button" (click)="cancelReopen()">Cancelar</button>
+      <button ui-button type="button" [disabled]="reopening" (click)="confirmReopen()">
+        {{ reopening ? 'Reabriendo...' : 'Confirmar reapertura' }}
+      </button>
+    </div>
+  </ui-modal>
+}
