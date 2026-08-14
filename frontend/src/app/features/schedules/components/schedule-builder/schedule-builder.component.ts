@@ -1,7 +1,8 @@
 import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { distinctUntilChanged } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
+import { distinctUntilChanged, forkJoin } from 'rxjs';
 
 import { AuthService } from '../../../../core/services/auth.service';
 import { ButtonDirective } from '../../../../shared/components/button/button.directive';
@@ -12,11 +13,18 @@ import { Branch } from '../../../branches/models/branch';
 import { BranchService } from '../../../branches/services/branch.service';
 import { Employee } from '../../../employees/models/employee';
 import { EmployeeService } from '../../../employees/services/employee.service';
+import { LeaveRequest } from '../../../leaves/models/leave-request';
+import { LeaveRequestService } from '../../../leaves/services/leave-request.service';
 import { CreateScheduleRequest, Schedule, TipoTurno } from '../../models/schedule';
 import { ScheduleService } from '../../services/schedule.service';
 
 const MONTHS_SHORT = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 const DAY_NAMES = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+
+interface ConflictDetail {
+  fecha: string;
+  turnoExistenteId: string;
+}
 
 function getMonday(d: Date): Date {
   const copy = new Date(d);
@@ -55,6 +63,7 @@ export class ScheduleBuilderComponent implements OnInit {
   private scheduleService = inject(ScheduleService);
   private employeeService = inject(EmployeeService);
   private branchService = inject(BranchService);
+  private leaveRequestService = inject(LeaveRequestService);
   private authService = inject(AuthService);
   private fb = inject(FormBuilder);
   private destroyRef = inject(DestroyRef);
@@ -71,6 +80,7 @@ export class ScheduleBuilderComponent implements OnInit {
   branches: Branch[] = [];
   employees: Employee[] = [];
   schedules: Schedule[] = [];
+  leaveRequests: LeaveRequest[] = [];
 
   loading = false;
   loadError: string | null = null;
@@ -92,6 +102,10 @@ export class ScheduleBuilderComponent implements OnInit {
 
   selectedSchedule: Schedule | null = null;
   deleteError: string | null = null;
+
+  conflictDetails: ConflictDetail[] | null = null;
+
+  // ─── computed getters ────────────────────────────────────────────────────
 
   get selectedBranchId(): string | null {
     return this.filterForm.getRawValue().branchId || null;
@@ -142,25 +156,24 @@ export class ScheduleBuilderComponent implements OnInit {
     return this.employees.map((e) => ({ value: e.id, label: `${e.nombre} ${e.apellido}` }));
   }
 
+  // ─── lifecycle ───────────────────────────────────────────────────────────
+
   ngOnInit(): void {
-    this.branchService.list().subscribe({
-      next: (branches) => {
+    forkJoin({
+      branches: this.branchService.list(),
+      employees: this.employeeService.list(),
+    }).subscribe({
+      next: ({ branches, employees }) => {
         this.branches = branches;
+        this.employees = employees;
         if (branches.length > 0) {
           this.filterForm.get('branchId')!.setValue(branches[0].id, { emitEvent: false });
           this.loadSchedules();
         }
       },
       error: () => {
-        this.branchesError = 'No se pudieron cargar las sucursales.';
+        this.branchesError = 'No se pudieron cargar los datos iniciales.';
       },
-    });
-
-    this.employeeService.list().subscribe({
-      next: (employees) => {
-        this.employees = employees;
-      },
-      error: () => {},
     });
 
     this.filterForm
@@ -169,15 +182,22 @@ export class ScheduleBuilderComponent implements OnInit {
       .subscribe(() => this.loadSchedules());
   }
 
+  // ─── data loading ────────────────────────────────────────────────────────
+
   loadSchedules(): void {
     if (!this.selectedBranchId) return;
     this.loading = true;
     this.loadError = null;
     const desde = toIsoDate(this.currentWeekStart);
     const hasta = toIsoDate(this.weekDays[6]);
-    this.scheduleService.list({ branchId: this.selectedBranchId, desde, hasta }).subscribe({
-      next: (schedules) => {
+
+    forkJoin({
+      schedules: this.scheduleService.list({ branchId: this.selectedBranchId, desde, hasta }),
+      leaves: this.leaveRequestService.list({ estado: 'APROBADA' }),
+    }).subscribe({
+      next: ({ schedules, leaves }) => {
         this.schedules = schedules;
+        this.leaveRequests = leaves;
         this.loading = false;
       },
       error: () => {
@@ -201,8 +221,27 @@ export class ScheduleBuilderComponent implements OnInit {
     this.loadSchedules();
   }
 
+  // ─── grid helpers ────────────────────────────────────────────────────────
+
   schedulesForDay(day: Date): Schedule[] {
     return this.schedules.filter((s) => isSameDay(new Date(s.fechaHoraInicio), day));
+  }
+
+  /** Schedules that started on a previous day and continue into this day. */
+  continuationSchedulesForDay(day: Date): Schedule[] {
+    return this.schedules.filter((s) => {
+      const start = new Date(s.fechaHoraInicio);
+      const end = new Date(s.fechaHoraFin);
+      return !isSameDay(start, day) && end > day && isSameDay(end, day);
+    });
+  }
+
+  /** Approved leaves that cover this day. */
+  leavesForDay(day: Date): LeaveRequest[] {
+    const dayStr = toIsoDate(day);
+    return this.leaveRequests.filter(
+      (lr) => lr.fechaInicio <= dayStr && lr.fechaFin >= dayStr,
+    );
   }
 
   blockTopPx(s: Schedule): number {
@@ -217,9 +256,7 @@ export class ScheduleBuilderComponent implements OnInit {
 
     const startMinutes = start.getHours() * 60 + start.getMinutes();
     const endMinutes =
-      end.getDate() !== start.getDate()
-        ? 24 * 60 // crosses midnight: clip to day boundary
-        : end.getHours() * 60 + end.getMinutes();
+      end.getDate() !== start.getDate() ? 24 * 60 : end.getHours() * 60 + end.getMinutes();
 
     const visibleStartMin = this.visibleStartHour * 60;
     const visibleEndMin = this.visibleEndHour * 60;
@@ -227,6 +264,17 @@ export class ScheduleBuilderComponent implements OnInit {
     const clampedEnd = Math.min(endMinutes, visibleEndMin);
 
     return Math.max(30, clampedEnd - clampedStart);
+  }
+
+  continuationBlockHeightPx(s: Schedule): number {
+    const end = new Date(s.fechaHoraFin);
+    const endMinutes = Math.min(end.getHours() * 60 + end.getMinutes(), this.visibleEndHour * 60);
+    return Math.max(30, endMinutes - this.visibleStartHour * 60);
+  }
+
+  continuationLabel(s: Schedule): string {
+    const start = new Date(s.fechaHoraInicio);
+    return `↪ de ${DAY_NAMES[start.getDay()]} ${pad2(start.getHours())}:${pad2(start.getMinutes())}`;
   }
 
   crossesMidnight(s: Schedule): boolean {
@@ -254,6 +302,12 @@ export class ScheduleBuilderComponent implements OnInit {
   formatDayHeader(day: Date): string {
     return `${DAY_NAMES[day.getDay()]} ${day.getDate()}`;
   }
+
+  hasOutOfAvailabilityWarning(s: Schedule): boolean {
+    return s.warning === 'OUT_OF_AVAILABILITY';
+  }
+
+  // ─── create modal ────────────────────────────────────────────────────────
 
   openCreateModal(day?: Date): void {
     this.formOpen = true;
@@ -290,11 +344,22 @@ export class ScheduleBuilderComponent implements OnInit {
         this.formOpen = false;
         this.loadSchedules();
       },
-      error: () => {
-        this.formError = 'No se pudo crear el turno. Verificá que no haya solapamiento con otro turno del empleado.';
+      error: (err: HttpErrorResponse) => {
+        if (err.status === 409 && err.error?.code === 'SCHEDULE_OVERLAP_BATCH') {
+          this.formOpen = false;
+          this.conflictDetails = err.error.conflictos as ConflictDetail[];
+        } else {
+          this.formError = 'No se pudo crear el turno. Intentá de nuevo.';
+        }
       },
     });
   }
+
+  closeConflictModal(): void {
+    this.conflictDetails = null;
+  }
+
+  // ─── block detail / delete ───────────────────────────────────────────────
 
   openBlockDetail(schedule: Schedule): void {
     this.selectedSchedule = schedule;
