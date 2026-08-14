@@ -58,6 +58,14 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'payroll/config',
+    canActivate: [roleGuard(['ADMIN']), forcePasswordChangeGuard],
+    loadComponent: () =>
+      import('./features/payroll/components/payroll-config/payroll-config.component').then(
+        (m) => m.PayrollConfigComponent,
+      ),
+  },
+  {
     path: '',
     canActivate: [authGuard, forcePasswordChangeGuard],
     loadComponent: () => import('./core/home/home.component').then((m) => m.HomeComponent),
