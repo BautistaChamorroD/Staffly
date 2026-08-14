@@ -1,0 +1,145 @@
+<main class="mx-auto max-w-5xl px-4 py-8">
+  <div class="mb-4 flex items-center justify-between">
+    <h1 class="font-heading text-2xl font-bold text-brand-ink">Adelantos de sueldo</h1>
+    @if (canManage) {
+      <button ui-button type="button" (click)="openCreateModal()">+ Nuevo adelanto</button>
+    }
+  </div>
+
+  @if (canManage) {
+    <div class="mb-4 flex flex-wrap gap-3">
+      <div class="w-56">
+        <ui-select
+          label="Empleado"
+          [options]="filterEmployeeOptions"
+          [(ngModel)]="filterEmployeeId"
+        ></ui-select>
+      </div>
+      <div class="w-64">
+        <ui-select
+          label="Período"
+          [options]="filterPeriodOptions"
+          [(ngModel)]="filterPeriodId"
+        ></ui-select>
+      </div>
+    </div>
+  }
+
+  @if (loading) {
+    <p class="text-sm text-brand-muted">Cargando adelantos...</p>
+  } @else if (loadError) {
+    <p class="rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ loadError }}</p>
+  } @else if (filteredAdvances.length === 0) {
+    <p class="text-sm text-brand-muted">No hay adelantos para mostrar.</p>
+  } @else {
+    <ui-table>
+      <thead>
+        <tr>
+          @if (canManage) {
+            <th class="px-3 py-2 text-left text-xs font-semibold uppercase text-brand-muted">Empleado</th>
+          }
+          <th class="px-3 py-2 text-left text-xs font-semibold uppercase text-brand-muted">Fecha</th>
+          <th class="px-3 py-2 text-left text-xs font-semibold uppercase text-brand-muted">Monto</th>
+          <th class="px-3 py-2 text-left text-xs font-semibold uppercase text-brand-muted">Motivo</th>
+          <th class="px-3 py-2 text-left text-xs font-semibold uppercase text-brand-muted">Estado</th>
+          @if (canManage) {
+            <th class="px-3 py-2"></th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        @for (advance of filteredAdvances; track advance.id) {
+          <tr class="border-b border-brand-line">
+            @if (canManage) {
+              <td class="px-3 py-2">{{ advance.employeeNombre }} {{ advance.employeeApellido }}</td>
+            }
+            <td class="px-3 py-2 tabular-nums">{{ advance.fecha }}</td>
+            <td class="px-3 py-2 tabular-nums">$ {{ advance.monto | number: '1.2-2' }}</td>
+            <td class="px-3 py-2 text-brand-muted">{{ advance.motivo ?? '—' }}</td>
+            <td class="px-3 py-2">
+              <ui-badge [variant]="badgeVariant(advance.estado)">{{ advance.estado }}</ui-badge>
+            </td>
+            @if (canManage) {
+              <td class="px-3 py-2 text-right">
+                @if (advance.estado === 'PENDIENTE') {
+                  <button
+                    ui-button
+                    variant="secondary"
+                    size="sm"
+                    type="button"
+                    (click)="openDeleteConfirm(advance)"
+                  >
+                    Eliminar
+                  </button>
+                }
+              </td>
+            }
+          </tr>
+        }
+      </tbody>
+    </ui-table>
+  }
+</main>
+
+@if (showCreateModal) {
+  <ui-modal title="Nuevo adelanto" (closed)="closeCreateModal()">
+    @if (createError) {
+      <p class="mb-4 rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ createError }}</p>
+    }
+    <form [formGroup]="createForm" (ngSubmit)="submitCreate()" class="space-y-4">
+      <ui-select
+        label="Empleado"
+        formControlName="employeeId"
+        [options]="employeeOptions"
+        placeholder="Seleccioná un empleado"
+        [errorMessage]="employeeIdCtrl.invalid && employeeIdCtrl.touched ? 'El empleado es requerido.' : undefined"
+      ></ui-select>
+      <ui-select
+        label="Período (opcional — pre-completa la fecha)"
+        formControlName="periodId"
+        [options]="openPeriodOptions"
+      ></ui-select>
+      <ui-input
+        label="Fecha"
+        type="date"
+        formControlName="fecha"
+        [errorMessage]="fechaCtrl.invalid && fechaCtrl.touched ? 'La fecha es requerida.' : undefined"
+      ></ui-input>
+      <ui-input
+        label="Monto"
+        type="number"
+        step="0.01"
+        formControlName="monto"
+        [errorMessage]="montoCtrl.invalid && montoCtrl.touched ? 'Ingresá un monto mayor a 0.' : undefined"
+      ></ui-input>
+      <ui-input label="Motivo (opcional)" formControlName="motivo"></ui-input>
+      <div class="flex justify-end gap-2 pt-2">
+        <button ui-button variant="secondary" type="button" (click)="closeCreateModal()">Cancelar</button>
+        <button ui-button type="submit" [disabled]="creating">
+          {{ creating ? 'Guardando...' : 'Registrar adelanto' }}
+        </button>
+      </div>
+    </form>
+  </ui-modal>
+}
+
+@if (deleteTarget) {
+  <ui-modal title="Eliminar adelanto" (closed)="cancelDelete()">
+    @if (deleteError) {
+      <p class="mb-4 rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ deleteError }}</p>
+    }
+    <p class="text-sm text-brand-ink">
+      ¿Confirmás que querés eliminar el adelanto de
+      <strong>$ {{ deleteTarget.monto | number: '1.2-2' }}</strong>
+      para
+      <strong>{{ deleteTarget.employeeNombre }} {{ deleteTarget.employeeApellido }}</strong>
+      del {{ deleteTarget.fecha }}?
+    </p>
+    <div class="mt-6 flex justify-end gap-2">
+      <button ui-button variant="secondary" type="button" (click)="cancelDelete()">Cancelar</button>
+      <button ui-button type="button" [disabled]="deleting" (click)="confirmDelete()">
+        {{ deleting ? 'Eliminando...' : 'Confirmar eliminación' }}
+      </button>
+    </div>
+  </ui-modal>
+}
