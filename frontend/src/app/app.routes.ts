@@ -98,6 +98,46 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'reports',
+    canActivate: [roleGuard(['ADMIN', 'RRHH']), forcePasswordChangeGuard],
+    loadComponent: () =>
+      import('./features/reports/components/reports-hub/reports-hub.component').then(
+        (m) => m.ReportsHubComponent,
+      ),
+  },
+  {
+    path: 'reports/hours-worked',
+    canActivate: [roleGuard(['ADMIN', 'RRHH']), forcePasswordChangeGuard],
+    loadComponent: () =>
+      import('./features/reports/components/hours-worked/hours-worked.component').then(
+        (m) => m.HoursWorkedComponent,
+      ),
+  },
+  {
+    path: 'reports/payroll-cost',
+    canActivate: [roleGuard(['ADMIN', 'RRHH']), forcePasswordChangeGuard],
+    loadComponent: () =>
+      import('./features/reports/components/payroll-cost/payroll-cost.component').then(
+        (m) => m.PayrollCostComponent,
+      ),
+  },
+  {
+    path: 'reports/pending-advances',
+    canActivate: [roleGuard(['ADMIN', 'RRHH']), forcePasswordChangeGuard],
+    loadComponent: () =>
+      import('./features/reports/components/pending-advances/pending-advances.component').then(
+        (m) => m.PendingAdvancesComponent,
+      ),
+  },
+  {
+    path: 'audit-log',
+    canActivate: [roleGuard(['ADMIN']), forcePasswordChangeGuard],
+    loadComponent: () =>
+      import('./features/audit/components/audit-log/audit-log.component').then(
+        (m) => m.AuditLogComponent,
+      ),
+  },
+  {
     path: '',
     canActivate: [authGuard, forcePasswordChangeGuard],
     loadComponent: () => import('./core/home/home.component').then((m) => m.HomeComponent),

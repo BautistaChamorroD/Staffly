@@ -6,6 +6,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["start", "--prefix", "frontend"],
       "port": 4200
+    },
+    {
+      "name": "backend",
+      "runtimeExecutable": "cmd.exe",
+      "runtimeArgs": ["/c", "backend\\mvnw.cmd", "-f", "backend/pom.xml", "spring-boot:run"],
+      "port": 8080
     }
   ]
 }

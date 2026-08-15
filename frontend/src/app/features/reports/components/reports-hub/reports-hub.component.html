@@ -1,0 +1,16 @@
+<main class="mx-auto max-w-4xl px-4 py-8">
+  <h1 class="font-heading mb-2 text-2xl font-bold text-brand-ink">Reportes</h1>
+  <p class="mb-8 text-sm text-brand-muted">Generá y exportá reportes de personal y nómina.</p>
+
+  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    @for (card of reportCards; track card.route) {
+      <a
+        [routerLink]="card.route"
+        class="block rounded-xl border border-brand-line bg-brand-card p-6 shadow-sm transition-shadow hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-acc"
+      >
+        <h2 class="font-heading mb-2 text-base font-semibold text-brand-ink">{{ card.title }}</h2>
+        <p class="text-sm leading-relaxed text-brand-muted">{{ card.description }}</p>
+      </a>
+    }
+  </div>
+</main>
