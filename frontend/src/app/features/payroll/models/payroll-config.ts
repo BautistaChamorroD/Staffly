@@ -1,4 +1,4 @@
-export type Periodicidad = 'MENSUAL' | 'QUINCENAL';
+export type Periodicidad = 'MENSUAL' | 'QUINCENAL' | 'SEMANAL';
 export type TipoConcepto = 'PORCENTAJE' | 'MONTO_FIJO';
 
 export interface ConceptoDescuento {

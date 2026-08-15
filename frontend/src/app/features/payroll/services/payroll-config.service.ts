@@ -22,7 +22,13 @@ export class PayrollConfigService {
 
   hasClosedPeriods(): Observable<boolean> {
     return this.http
-      .get<unknown[]>(`${this.periodsUrl}?estado=CERRADO`)
-      .pipe(map((periods) => periods.length > 0));
+      .get<unknown>(`${this.periodsUrl}?estado=CERRADO`)
+      .pipe(
+        map((r) => {
+          if (Array.isArray(r)) return r.length > 0;
+          const p = r as { content?: unknown[]; totalElements?: number };
+          return (p.totalElements ?? p.content?.length ?? 0) > 0;
+        }),
+      );
   }
 }

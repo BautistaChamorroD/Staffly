@@ -11,13 +11,15 @@
         <button ui-button variant="secondary" size="sm" type="button" (click)="nextWeek()">&#8594;</button>
       </div>
 
-      <!-- Branch selector -->
-      @if (branchesError) {
-        <p class="text-sm text-badge-error-ink" role="alert">{{ branchesError }}</p>
-      } @else {
-        <form [formGroup]="filterForm" class="w-44">
-          <ui-select formControlName="branchId" [options]="branchOptions" placeholder="Sucursal"></ui-select>
-        </form>
+      <!-- Branch selector (not shown for EMPLOYEE — they see their own shifts) -->
+      @if (role !== 'EMPLOYEE') {
+        @if (branchesError) {
+          <p class="text-sm text-badge-error-ink" role="alert">{{ branchesError }}</p>
+        } @else {
+          <form [formGroup]="filterForm" class="w-44">
+            <ui-select formControlName="branchId" [options]="branchOptions" placeholder="Sucursal"></ui-select>
+          </form>
+        }
       }
 
       @if (canWrite && selectedBranchId) {
@@ -30,7 +32,7 @@
     <p class="mb-2 rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ loadError }}</p>
   }
 
-  @if (!selectedBranchId) {
+  @if (role !== 'EMPLOYEE' && !selectedBranchId) {
     <p class="text-sm text-brand-muted">Seleccioná una sucursal para ver los horarios.</p>
   } @else {
     <!-- Grid container -->
@@ -103,12 +105,22 @@
                 <!-- Schedule blocks -->
                 @for (s of schedulesForDay(day); track s.id) {
                   <div
-                    class="absolute left-0.5 right-0.5 z-20 cursor-pointer overflow-hidden rounded bg-brand-acc p-1 text-xs leading-tight shadow-sm ring-1 ring-brand-line transition-opacity hover:opacity-80"
+                    class="absolute left-0.5 right-0.5 z-20 cursor-pointer overflow-hidden rounded p-1 text-xs leading-tight shadow-sm transition-opacity hover:opacity-80"
+                    [class]="s.warning === 'OUT_OF_AVAILABILITY'
+                      ? 'border border-dashed border-badge-warning-ink bg-badge-warning-bg ring-1 ring-badge-warning-ink'
+                      : 'bg-brand-acc ring-1 ring-brand-line'"
                     [style.top.px]="blockTopPx(s)"
                     [style.height.px]="blockHeightPx(s)"
                     (click)="openBlockDetail(s)"
                   >
-                    <div class="truncate font-semibold text-brand-ink">{{ getEmployeeName(s.employeeId) }}</div>
+                    <div class="flex items-center justify-between gap-0.5">
+                      <div class="truncate font-semibold text-brand-ink">
+                        @if (role === 'EMPLOYEE') { Mi turno } @else { {{ getEmployeeName(s.employeeId) }} }
+                      </div>
+                      @if (s.warning === 'OUT_OF_AVAILABILITY') {
+                        <span class="shrink-0 text-badge-warning-ink" title="Fuera de disponibilidad declarada">⚠</span>
+                      }
+                    </div>
                     <div class="text-brand-muted">{{ formatTimeRange(s) }}</div>
                     @if (crossesMidnight(s)) {
                       <div class="mt-px text-[10px] text-brand-muted">&#8618; continúa</div>

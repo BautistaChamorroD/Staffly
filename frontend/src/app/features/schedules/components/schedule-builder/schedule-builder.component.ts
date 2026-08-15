@@ -72,6 +72,8 @@ export class ScheduleBuilderComponent implements OnInit {
   employees: Employee[] = [];
   schedules: Schedule[] = [];
 
+  myEmployeeId: string | null = null;
+
   loading = false;
   loadError: string | null = null;
   branchesError: string | null = null;
@@ -143,6 +145,19 @@ export class ScheduleBuilderComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    if (this.role === 'EMPLOYEE') {
+      this.employeeService.me().subscribe({
+        next: (emp) => {
+          this.myEmployeeId = emp.id;
+          this.loadSchedules();
+        },
+        error: () => {
+          this.loadError = 'No se pudo obtener tu información de empleado.';
+        },
+      });
+      return;
+    }
+
     this.branchService.list().subscribe({
       next: (branches) => {
         this.branches = branches;
@@ -157,9 +172,7 @@ export class ScheduleBuilderComponent implements OnInit {
     });
 
     this.employeeService.list().subscribe({
-      next: (employees) => {
-        this.employees = employees;
-      },
+      next: (employees) => { this.employees = employees; },
       error: () => {},
     });
 
@@ -170,20 +183,26 @@ export class ScheduleBuilderComponent implements OnInit {
   }
 
   loadSchedules(): void {
+    const desde = toIsoDate(this.currentWeekStart);
+    const hasta = toIsoDate(this.weekDays[6]);
+
+    if (this.role === 'EMPLOYEE') {
+      if (!this.myEmployeeId) return;
+      this.loading = true;
+      this.loadError = null;
+      this.scheduleService.list({ employeeId: this.myEmployeeId, desde, hasta }).subscribe({
+        next: (schedules) => { this.schedules = schedules; this.loading = false; },
+        error: () => { this.loading = false; this.loadError = 'No se pudieron cargar tus turnos.'; },
+      });
+      return;
+    }
+
     if (!this.selectedBranchId) return;
     this.loading = true;
     this.loadError = null;
-    const desde = toIsoDate(this.currentWeekStart);
-    const hasta = toIsoDate(this.weekDays[6]);
     this.scheduleService.list({ branchId: this.selectedBranchId, desde, hasta }).subscribe({
-      next: (schedules) => {
-        this.schedules = schedules;
-        this.loading = false;
-      },
-      error: () => {
-        this.loading = false;
-        this.loadError = 'No se pudieron cargar los turnos.';
-      },
+      next: (schedules) => { this.schedules = schedules; this.loading = false; },
+      error: () => { this.loading = false; this.loadError = 'No se pudieron cargar los turnos.'; },
     });
   }
 

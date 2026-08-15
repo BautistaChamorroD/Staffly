@@ -28,6 +28,7 @@ export class PayrollConfigComponent implements OnInit {
   readonly periodicidadOptions: SelectOption[] = [
     { value: 'MENSUAL', label: 'Mensual' },
     { value: 'QUINCENAL', label: 'Quincenal' },
+    { value: 'SEMANAL', label: 'Semanal' },
   ];
 
   readonly tipoConceptoOptions: SelectOption[] = [

@@ -51,10 +51,18 @@ export const routes: Routes = [
   },
   {
     path: 'schedules',
-    canActivate: [roleGuard(['ADMIN', 'RRHH', 'SUPERVISOR']), forcePasswordChangeGuard],
+    canActivate: [roleGuard(['ADMIN', 'RRHH', 'SUPERVISOR', 'EMPLOYEE']), forcePasswordChangeGuard],
     loadComponent: () =>
       import('./features/schedules/components/schedule-builder/schedule-builder.component').then(
         (m) => m.ScheduleBuilderComponent,
+      ),
+  },
+  {
+    path: 'leaves',
+    canActivate: [roleGuard(['ADMIN', 'RRHH', 'SUPERVISOR', 'EMPLOYEE']), forcePasswordChangeGuard],
+    loadComponent: () =>
+      import('./features/leaves/components/leaves-list/leaves-list.component').then(
+        (m) => m.LeavesListComponent,
       ),
   },
   {

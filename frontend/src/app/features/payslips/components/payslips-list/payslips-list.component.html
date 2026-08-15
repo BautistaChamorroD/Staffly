@@ -69,13 +69,17 @@
                 @if (p.horasExtra > 0) {
                   <li class="flex justify-between">
                     <span class="text-brand-ink">Horas extra ({{ p.horasExtra | number: '1.0-1' }} hs)</span>
-                    <span class="tabular-nums text-brand-ink">—</span>
+                    <span class="tabular-nums text-brand-ink">
+                      @if (p.montoHorasExtra != null) { $ {{ p.montoHorasExtra | number: '1.2-2' }} } @else { — }
+                    </span>
                   </li>
                 }
                 @if (p.horasFeriado > 0) {
                   <li class="flex justify-between">
                     <span class="text-brand-ink">Horas feriado ({{ p.horasFeriado | number: '1.0-1' }} hs)</span>
-                    <span class="tabular-nums text-brand-ink">—</span>
+                    <span class="tabular-nums text-brand-ink">
+                      @if (p.montoHorasFeriado != null) { $ {{ p.montoHorasFeriado | number: '1.2-2' }} } @else { — }
+                    </span>
                   </li>
                 }
                 <li class="flex justify-between border-t border-brand-line pt-1.5 font-medium">
@@ -165,7 +169,7 @@
     <form [formGroup]="voidForm" class="mt-4">
       <ui-input
         label="Motivo de anulación (opcional)"
-        formControlName="motivoAnulacion"
+        formControlName="motivo"
       ></ui-input>
     </form>
     <div class="mt-6 flex justify-end gap-2">

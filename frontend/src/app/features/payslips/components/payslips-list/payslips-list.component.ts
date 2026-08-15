@@ -60,7 +60,7 @@ export class PayslipsListComponent implements OnInit {
   voiding = false;
 
   voidForm = this.fb.group({
-    motivoAnulacion: ['', Validators.maxLength(1000)],
+    motivo: ['', Validators.maxLength(1000)],
   });
 
   get employeeOptions(): SelectOption[] {
@@ -90,6 +90,7 @@ export class PayslipsListComponent implements OnInit {
       case 'GENERADO': return 'warning';
       case 'PAGADO':   return 'success';
       case 'ANULADO':  return 'neutral';
+      case 'AJUSTE':   return 'info';
     }
   }
 
@@ -112,7 +113,7 @@ export class PayslipsListComponent implements OnInit {
         },
       });
     } else {
-      this.payslipService.me().subscribe({
+      this.payslipService.list().subscribe({
         next: (payslips) => {
           this.payslips = payslips;
           this.loading = false;
@@ -160,8 +161,8 @@ export class PayslipsListComponent implements OnInit {
     if (!target) return;
     this.voiding = true;
     this.voidError = null;
-    const motivo = this.voidForm.getRawValue().motivoAnulacion || undefined;
-    this.payslipService.voidAndAdjust(target.id, { motivoAnulacion: motivo }).subscribe({
+    const motivo = this.voidForm.getRawValue().motivo || undefined;
+    this.payslipService.voidAndAdjust(target.id, { motivo }).subscribe({
       next: (adjustment) => {
         this.voiding = false;
         this.voidTarget = null;
