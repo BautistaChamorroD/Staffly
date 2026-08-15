@@ -55,6 +55,9 @@ export class PayslipsListComponent implements OnInit {
   downloadingIds = new Set<string>();
   pdfErrors: Record<string, string> = {};
 
+  markingPaidId: string | null = null;
+  markPaidErrors: Record<string, string> = {};
+
   voidTarget: Payslip | null = null;
   voidError: string | null = null;
   voiding = false;
@@ -142,6 +145,23 @@ export class PayslipsListComponent implements OnInit {
       error: () => {
         this.downloadingIds.delete(payslip.id);
         this.pdfErrors[payslip.id] = 'No se pudo descargar el PDF. Intentá de nuevo.';
+      },
+    });
+  }
+
+  markPaid(payslip: Payslip): void {
+    this.markingPaidId = payslip.id;
+    delete this.markPaidErrors[payslip.id];
+    this.payslipService.markPaid(payslip.id).subscribe({
+      next: (updated) => {
+        this.markingPaidId = null;
+        const idx = this.payslips.findIndex((p) => p.id === payslip.id);
+        if (idx !== -1) this.payslips[idx] = updated;
+        this.payslips = [...this.payslips];
+      },
+      error: () => {
+        this.markingPaidId = null;
+        this.markPaidErrors[payslip.id] = 'No se pudo marcar como pagado. Intentá de nuevo.';
       },
     });
   }

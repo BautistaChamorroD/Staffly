@@ -247,7 +247,7 @@ export class ScheduleBuilderComponent implements OnInit {
     const end = new Date(s.fechaHoraFin);
     const endMinutes = end.getHours() * 60 + end.getMinutes();
     if (this.isContinuation(s, day)) {
-      return endMinutes;
+      return Math.max(30, endMinutes - this.visibleStartHour * 60);
     }
     const start = new Date(s.fechaHoraInicio);
     const startMinutes = start.getHours() * 60 + start.getMinutes();

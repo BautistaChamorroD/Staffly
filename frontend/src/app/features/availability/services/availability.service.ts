@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 
 import { environment } from '../../../../environments/environment';
 import { Availability, CreateAvailabilityRequest, UpdateAvailabilityRequest } from '../models/availability';
@@ -14,7 +15,9 @@ export class AvailabilityService {
   }
 
   list(employeeId: string): Observable<Availability[]> {
-    return this.http.get<Availability[]>(this.base(employeeId));
+    return this.http
+      .get<Availability[] | { content: Availability[] }>(this.base(employeeId))
+      .pipe(map((r) => (Array.isArray(r) ? r : r.content)));
   }
 
   create(employeeId: string, request: CreateAvailabilityRequest): Observable<Availability> {

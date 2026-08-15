@@ -27,4 +27,8 @@ export class PayslipService {
   downloadPdf(id: string): Observable<Blob> {
     return this.http.get(`${this.baseUrl}/${id}/pdf`, { responseType: 'blob' });
   }
+
+  markPaid(id: string): Observable<Payslip> {
+    return this.http.patch<Payslip>(`${this.baseUrl}/${id}/mark-paid`, null);
+  }
 }

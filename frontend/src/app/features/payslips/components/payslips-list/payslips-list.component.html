@@ -125,6 +125,22 @@
             </span>
           </footer>
 
+          <!-- Acción: marcar como pagado (solo ADMIN/RRHH, solo GENERADO) -->
+          @if (canManage && p.estado === 'GENERADO') {
+            <div class="flex flex-col gap-1 px-5 py-3">
+              <div class="flex flex-wrap justify-end gap-2">
+                <button ui-button size="sm" type="button"
+                  [disabled]="markingPaidId === p.id"
+                  (click)="markPaid(p)">
+                  {{ markingPaidId === p.id ? 'Procesando...' : 'Marcar como pagado' }}
+                </button>
+              </div>
+              @if (markPaidErrors[p.id]) {
+                <p class="text-right text-xs text-badge-error-ink" role="alert">{{ markPaidErrors[p.id] }}</p>
+              }
+            </div>
+          }
+
           <!-- Acciones: descargar PDF y/o anular -->
           @if (p.estado === 'PAGADO' || p.tipo === 'AJUSTE') {
             <div class="flex flex-col gap-1 px-5 py-3">

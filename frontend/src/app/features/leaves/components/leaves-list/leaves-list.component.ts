@@ -10,7 +10,7 @@ import { ModalComponent } from '../../../../shared/components/modal/modal.compon
 import { SelectComponent, SelectOption } from '../../../../shared/components/select/select.component';
 import { Employee } from '../../../employees/models/employee';
 import { EmployeeService } from '../../../employees/services/employee.service';
-import { EstadoLicencia, LeaveRequest, LeaveType } from '../../models/leave';
+import { CreateLeaveRequestBody, EstadoLicencia, LeaveRequest, LeaveType } from '../../models/leave';
 import { LeaveRequestService } from '../../services/leave-request.service';
 import { LeaveTypeService } from '../../services/leave-type.service';
 
@@ -38,6 +38,7 @@ export class LeavesListComponent implements OnInit {
   readonly role = this.authService.getRole();
   readonly canManage = this.role === 'ADMIN' || this.role === 'RRHH' || this.role === 'SUPERVISOR';
   readonly isAdmin = this.role === 'ADMIN';
+  readonly canCreate = this.role === 'ADMIN' || this.role === 'RRHH' || this.role === 'EMPLOYEE';
 
   requests: LeaveRequest[] = [];
   leaveTypes: LeaveType[] = [];
@@ -55,6 +56,7 @@ export class LeavesListComponent implements OnInit {
   creating = false;
 
   createForm = this.fb.group({
+    employeeId: [''],
     leaveTypeId: ['', Validators.required],
     fechaInicio: ['', Validators.required],
     fechaFin: ['', Validators.required],
@@ -92,6 +94,7 @@ export class LeavesListComponent implements OnInit {
   approvingId: string | null = null;
   approveErrors: Record<string, string> = {};
 
+  get employeeIdCtrl() { return this.createForm.get('employeeId')!; }
   get leaveTypeIdCtrl() { return this.createForm.get('leaveTypeId')!; }
   get fechaInicioCtrl() { return this.createForm.get('fechaInicio')!; }
   get fechaFinCtrl() { return this.createForm.get('fechaFin')!; }
@@ -105,6 +108,10 @@ export class LeavesListComponent implements OnInit {
       { value: '', label: 'Todos los empleados' },
       ...this.employees.map((e) => ({ value: e.id, label: `${e.nombre} ${e.apellido}` })),
     ];
+  }
+
+  get employeeSelectOptions(): SelectOption[] {
+    return this.employees.map((e) => ({ value: e.id, label: `${e.nombre} ${e.apellido}` }));
   }
 
   get estadoFilterOptions(): SelectOption[] {
@@ -175,6 +182,13 @@ export class LeavesListComponent implements OnInit {
   openCreateModal(): void {
     this.createForm.reset();
     this.createError = null;
+    const employeeIdCtrl = this.createForm.get('employeeId')!;
+    if (this.role !== 'EMPLOYEE') {
+      employeeIdCtrl.setValidators([Validators.required]);
+    } else {
+      employeeIdCtrl.clearValidators();
+    }
+    employeeIdCtrl.updateValueAndValidity();
     this.showCreateModal = true;
   }
 
@@ -190,12 +204,14 @@ export class LeavesListComponent implements OnInit {
     this.creating = true;
     this.createError = null;
     const raw = this.createForm.getRawValue();
-    this.leaveRequestService.create({
+    const body: CreateLeaveRequestBody = {
       leaveTypeId: raw.leaveTypeId!,
       fechaInicio: raw.fechaInicio!,
       fechaFin: raw.fechaFin!,
       motivo: raw.motivo || undefined,
-    }).subscribe({
+    };
+    if (raw.employeeId) body.employeeId = raw.employeeId;
+    this.leaveRequestService.create(body).subscribe({
       next: (req) => {
         this.creating = false;
         this.showCreateModal = false;
@@ -299,6 +315,7 @@ export class LeavesListComponent implements OnInit {
   }
 
   canCancel(req: LeaveRequest): boolean {
+    if (this.role === 'SUPERVISOR') return false;
     return req.estado === 'PENDIENTE' || req.estado === 'APROBADA';
   }
 

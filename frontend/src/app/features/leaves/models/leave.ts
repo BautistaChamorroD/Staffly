@@ -27,6 +27,7 @@ export interface CreateLeaveRequestBody {
   fechaInicio: string;
   fechaFin: string;
   motivo?: string;
+  employeeId?: string;
 }
 
 export interface RejectLeaveRequestBody {
