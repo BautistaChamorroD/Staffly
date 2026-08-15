@@ -302,8 +302,8 @@ export class ScheduleBuilderComponent implements OnInit {
     const dayStr = toIsoDate(this.formDay);
     this.slotForm.reset({
       employeeId: '',
-      fechaHoraInicio: `${dayStr}T09:00`,
-      fechaHoraFin: `${dayStr}T17:00`,
+      fechaHoraInicio: `${dayStr}T09:00:00`,
+      fechaHoraFin: `${dayStr}T17:00:00`,
       tipoTurno: 'FIJO',
     });
   }
@@ -317,11 +317,12 @@ export class ScheduleBuilderComponent implements OnInit {
     const raw = this.slotForm.getRawValue();
     this.formError = null;
 
+    const withSeconds = (dt: string) => /:\d{2}:\d{2}$/.test(dt) ? dt : `${dt}:00`;
     const request: CreateScheduleRequest = {
       employeeId: raw.employeeId!,
       branchId: this.selectedBranchId,
-      fechaHoraInicio: raw.fechaHoraInicio!,
-      fechaHoraFin: raw.fechaHoraFin!,
+      fechaHoraInicio: withSeconds(raw.fechaHoraInicio!),
+      fechaHoraFin: withSeconds(raw.fechaHoraFin!),
       tipoTurno: raw.tipoTurno as TipoTurno,
     };
 

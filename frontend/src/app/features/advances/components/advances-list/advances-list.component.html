@@ -29,6 +29,8 @@
     <p class="text-sm text-brand-muted">Cargando adelantos...</p>
   } @else if (loadError) {
     <p class="rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ loadError }}</p>
+  } @else if (!canManage) {
+    <p class="text-sm text-brand-muted">Los adelantos son gestionados por RRHH. Consultá con tu encargado para ver el detalle de tus adelantos.</p>
   } @else if (filteredAdvances.length === 0) {
     <p class="text-sm text-brand-muted">No hay adelantos para mostrar.</p>
   } @else {
