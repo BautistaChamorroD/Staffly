@@ -1,38 +1,84 @@
 <main class="mx-auto max-w-6xl px-4 py-8">
   <h1 class="font-heading mb-6 text-2xl font-bold text-brand-ink">Registro de auditoría</h1>
 
-  <!-- FE-4.5: filtros (entidad, userId, desde/hasta) -->
+  <!-- Filtros -->
+  <div class="mb-6 rounded-xl border border-brand-line bg-brand-card p-5 shadow-sm">
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <ui-input label="Entidad" placeholder="Ej: Employee, Branch..." [(ngModel)]="filterEntidad"></ui-input>
+      <ui-input label="ID de entidad" placeholder="UUID..." [(ngModel)]="filterEntidadId"></ui-input>
+      <ui-input label="ID de usuario" placeholder="UUID..." [(ngModel)]="filterUserId"></ui-input>
+      <ui-input label="Desde" type="date" [(ngModel)]="filterDesde"></ui-input>
+      <ui-input label="Hasta" type="date" [(ngModel)]="filterHasta"></ui-input>
+    </div>
+    <div class="mt-4 flex gap-2">
+      <button ui-button type="button" [disabled]="loading" (click)="applyFilters()">
+        {{ loading ? 'Cargando...' : 'Aplicar filtros' }}
+      </button>
+      <button ui-button variant="secondary" type="button" [disabled]="loading" (click)="clearFilters()">
+        Limpiar
+      </button>
+    </div>
+  </div>
+
+  @if (loadError) {
+    <p class="mb-4 rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ loadError }}</p>
+  }
 
   @if (loading) {
     <p class="text-sm text-brand-muted">Cargando registros...</p>
-  } @else if (loadError) {
-    <p class="rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ loadError }}</p>
-  } @else if (entries.length === 0) {
-    <p class="text-sm text-brand-muted">No hay registros de auditoría para mostrar.</p>
-  } @else {
-    <div class="overflow-x-auto rounded-xl border border-brand-line">
-      <table class="w-full text-sm">
-        <thead class="bg-brand-card text-xs font-semibold uppercase tracking-wide text-brand-muted">
-          <tr>
-            <th class="px-4 py-3 text-left">Fecha/hora</th>
-            <th class="px-4 py-3 text-left">Entidad</th>
-            <th class="px-4 py-3 text-left">Acción</th>
-            <th class="px-4 py-3 text-left">Usuario</th>
-            <th class="px-4 py-3 text-left">Descripción</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-brand-line">
-          @for (entry of entries; track entry.id) {
-            <tr class="bg-brand-card">
-              <td class="px-4 py-3 font-mono text-xs text-brand-muted">{{ entry.timestamp }}</td>
-              <td class="px-4 py-3 text-brand-ink">{{ entry.entidad }}</td>
-              <td class="px-4 py-3 text-brand-ink">{{ entry.accion }}</td>
-              <td class="px-4 py-3 text-brand-ink">{{ entry.userName }}</td>
-              <td class="px-4 py-3 text-brand-muted">{{ entry.descripcion }}</td>
+  } @else if (!loadError) {
+    @if (entries.length === 0) {
+      <p class="text-sm text-brand-muted">No hay registros para los filtros seleccionados.</p>
+    } @else {
+      <p class="mb-3 text-sm text-brand-muted">{{ entries.length }} {{ entries.length === 1 ? 'registro' : 'registros' }}</p>
+      <div class="overflow-x-auto rounded-xl border border-brand-line">
+        <table class="w-full text-sm">
+          <thead class="bg-brand-card text-xs font-semibold uppercase tracking-wide text-brand-muted">
+            <tr>
+              <th class="px-4 py-3 text-left">Fecha / hora</th>
+              <th class="px-4 py-3 text-left">Entidad</th>
+              <th class="px-4 py-3 text-left">Acción</th>
+              <th class="px-4 py-3 text-left">Usuario</th>
+              <th class="px-4 py-3 text-left">Descripción</th>
+              <th class="px-4 py-3 text-center">Cambios</th>
             </tr>
-          }
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody class="divide-y divide-brand-line">
+            @for (entry of entries; track entry.id) {
+              <tr class="bg-brand-card">
+                <td class="px-4 py-3 font-mono text-xs text-brand-muted">{{ entry.timestamp }}</td>
+                <td class="px-4 py-3">
+                  <span class="font-medium text-brand-ink">{{ entry.entidad }}</span>
+                  <span class="ml-1 font-mono text-xs text-brand-muted">{{ entry.entidadId }}</span>
+                </td>
+                <td class="px-4 py-3 text-brand-ink">{{ entry.accion }}</td>
+                <td class="px-4 py-3 text-brand-ink">{{ entry.userName }}</td>
+                <td class="px-4 py-3 text-brand-muted">{{ entry.descripcion }}</td>
+                <td class="px-4 py-3 text-center">
+                  @if (hasChanges(entry)) {
+                    <button
+                      type="button"
+                      class="rounded px-2 py-0.5 text-xs font-medium text-brand-acc hover:underline"
+                      (click)="toggleExpand(entry.id)"
+                    >
+                      {{ expandedId === entry.id ? 'Ocultar' : 'Ver' }}
+                    </button>
+                  } @else {
+                    <span class="text-xs text-brand-muted">—</span>
+                  }
+                </td>
+              </tr>
+              @if (expandedId === entry.id) {
+                <tr class="bg-brand-card">
+                  <td colspan="6" class="px-4 pb-4 pt-0">
+                    <pre class="overflow-x-auto rounded-lg border border-brand-line bg-brand-bg p-3 text-xs text-brand-ink">{{ formatChanges(entry) }}</pre>
+                  </td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+    }
   }
 </main>
