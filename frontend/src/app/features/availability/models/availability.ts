@@ -32,6 +32,8 @@ export interface Availability {
   diaSemana: DiaSemana;
   horaInicio: string; // "HH:mm:ss"
   horaFin: string;    // "HH:mm:ss"
+  tipo?: 'RECURRENTE' | 'EXCEPCION';
+  fechaEspecifica?: string;
 }
 
 export interface CreateAvailabilityRequest {

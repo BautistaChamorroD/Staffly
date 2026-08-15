@@ -1,4 +1,4 @@
-export type EstadoRecibo = 'GENERADO' | 'PAGADO' | 'ANULADO';
+export type EstadoRecibo = 'GENERADO' | 'PAGADO' | 'ANULADO' | 'AJUSTE';
 export type TipoRecibo = 'NORMAL' | 'AJUSTE';
 
 export interface DeduccionLinea {
@@ -22,6 +22,8 @@ export interface Payslip {
   horasNormales: number;
   horasExtra: number;
   horasFeriado: number;
+  montoHorasExtra?: number;
+  montoHorasFeriado?: number;
   brutoCalculado: number;
   detalleDescuentos: DeduccionLinea[];
   totalDeducciones: number;
@@ -31,5 +33,5 @@ export interface Payslip {
 }
 
 export interface VoidPayslipRequest {
-  motivoAnulacion?: string;
+  motivo?: string;
 }

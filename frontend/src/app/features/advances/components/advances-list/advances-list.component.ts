@@ -1,5 +1,6 @@
 import { DecimalPipe } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { forkJoin } from 'rxjs';
 
@@ -39,6 +40,7 @@ export class AdvancesListComponent implements OnInit {
   private periodService = inject(PayrollPeriodService);
   private authService = inject(AuthService);
   private fb = inject(FormBuilder);
+  private destroyRef = inject(DestroyRef);
 
   readonly role = this.authService.getRole();
   readonly canManage = this.role === 'ADMIN' || this.role === 'RRHH';
@@ -138,17 +140,19 @@ export class AdvancesListComponent implements OnInit {
         },
       });
     } else {
-      this.advanceService.list().subscribe({
-        next: (advances) => {
-          this.advances = advances;
-          this.loading = false;
-        },
-        error: () => {
-          this.loading = false;
-          this.loadError = 'No se pudo cargar tus adelantos.';
-        },
-      });
+      // GET /advances is restricted to ADMIN/RRHH per API contract
+      this.loading = false;
     }
+
+    this.createForm.get('periodId')!.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((periodId) => {
+        if (!this.showCreateModal || !periodId) return;
+        const period = this.periods.find((p) => p.id === periodId);
+        if (period) {
+          this.createForm.patchValue({ fecha: period.fechaInicio }, { emitEvent: false });
+        }
+      });
   }
 
   badgeVariant(estado: EstadoAdelanto): BadgeVariant {
@@ -165,14 +169,6 @@ export class AdvancesListComponent implements OnInit {
     this.createForm.reset({ periodId: '', motivo: '' });
     this.createError = null;
     this.showCreateModal = true;
-
-    this.createForm.get('periodId')!.valueChanges.subscribe((periodId) => {
-      if (!periodId) return;
-      const period = this.periods.find((p) => p.id === periodId);
-      if (period) {
-        this.createForm.patchValue({ fecha: period.fechaInicio }, { emitEvent: false });
-      }
-    });
   }
 
   closeCreateModal(): void {

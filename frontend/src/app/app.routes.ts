@@ -51,10 +51,18 @@ export const routes: Routes = [
   },
   {
     path: 'schedules',
-    canActivate: [roleGuard(['ADMIN', 'RRHH', 'SUPERVISOR']), forcePasswordChangeGuard],
+    canActivate: [roleGuard(['ADMIN', 'RRHH', 'SUPERVISOR', 'EMPLOYEE']), forcePasswordChangeGuard],
     loadComponent: () =>
       import('./features/schedules/components/schedule-builder/schedule-builder.component').then(
         (m) => m.ScheduleBuilderComponent,
+      ),
+  },
+  {
+    path: 'leaves',
+    canActivate: [roleGuard(['ADMIN', 'RRHH', 'SUPERVISOR', 'EMPLOYEE']), forcePasswordChangeGuard],
+    loadComponent: () =>
+      import('./features/leaves/components/leaves-list/leaves-list.component').then(
+        (m) => m.LeavesListComponent,
       ),
   },
   {
@@ -87,6 +95,46 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./features/payslips/components/payslips-list/payslips-list.component').then(
         (m) => m.PayslipsListComponent,
+      ),
+  },
+  {
+    path: 'reports',
+    canActivate: [roleGuard(['ADMIN', 'RRHH']), forcePasswordChangeGuard],
+    loadComponent: () =>
+      import('./features/reports/components/reports-hub/reports-hub.component').then(
+        (m) => m.ReportsHubComponent,
+      ),
+  },
+  {
+    path: 'reports/hours-worked',
+    canActivate: [roleGuard(['ADMIN', 'RRHH']), forcePasswordChangeGuard],
+    loadComponent: () =>
+      import('./features/reports/components/hours-worked/hours-worked.component').then(
+        (m) => m.HoursWorkedComponent,
+      ),
+  },
+  {
+    path: 'reports/payroll-cost',
+    canActivate: [roleGuard(['ADMIN', 'RRHH']), forcePasswordChangeGuard],
+    loadComponent: () =>
+      import('./features/reports/components/payroll-cost/payroll-cost.component').then(
+        (m) => m.PayrollCostComponent,
+      ),
+  },
+  {
+    path: 'reports/pending-advances',
+    canActivate: [roleGuard(['ADMIN', 'RRHH']), forcePasswordChangeGuard],
+    loadComponent: () =>
+      import('./features/reports/components/pending-advances/pending-advances.component').then(
+        (m) => m.PendingAdvancesComponent,
+      ),
+  },
+  {
+    path: 'audit-log',
+    canActivate: [roleGuard(['ADMIN']), forcePasswordChangeGuard],
+    loadComponent: () =>
+      import('./features/audit/components/audit-log/audit-log.component').then(
+        (m) => m.AuditLogComponent,
       ),
   },
   {

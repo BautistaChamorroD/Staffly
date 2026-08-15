@@ -29,6 +29,7 @@ export class PayrollPeriodsComponent implements OnInit {
   private fb = inject(FormBuilder);
 
   readonly isAdmin = this.authService.getRole() === 'ADMIN';
+  readonly canClose = this.authService.getRole() === 'ADMIN' || this.authService.getRole() === 'RRHH';
 
   periods: PayrollPeriod[] = [];
   loading = true;
@@ -70,6 +71,8 @@ export class PayrollPeriodsComponent implements OnInit {
         return 'neutral';
       case 'REABIERTO':
         return 'warning';
+      case 'PAGADO':
+        return 'info';
     }
   }
 

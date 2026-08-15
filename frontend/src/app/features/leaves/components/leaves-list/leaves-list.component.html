@@ -1,0 +1,247 @@
+<main class="mx-auto max-w-3xl px-4 py-8">
+  @if (isAdmin) {
+    <section class="mb-6 rounded-xl border border-brand-line bg-brand-card p-5 shadow-sm">
+      <div class="mb-3 flex items-center justify-between">
+        <h2 class="font-heading text-base font-semibold text-brand-ink">Tipos de licencia</h2>
+        <button ui-button variant="secondary" size="sm" type="button" (click)="openNewTypeModal()">
+          + Nuevo tipo
+        </button>
+      </div>
+      @if (leaveTypes.length === 0) {
+        <p class="text-sm text-brand-muted">No hay tipos configurados.</p>
+      } @else {
+        <ul class="divide-y divide-brand-line">
+          @for (t of leaveTypes; track t.id) {
+            <li class="flex items-center justify-between py-2.5">
+              <div>
+                <span class="text-sm font-medium text-brand-ink">{{ t.nombre }}</span>
+                <span class="ml-2 text-xs text-brand-muted">
+                  {{ t.esPaga ? 'Paga' : 'No paga' }}
+                  @if (t.tieneCupoAnual && t.cuposDiasAnual != null) {
+                    · {{ t.cuposDiasAnual }} días/año
+                  }
+                </span>
+              </div>
+              <button ui-button variant="secondary" size="sm" type="button" (click)="openEditTypeModal(t)">
+                Editar
+              </button>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+  }
+
+  <div class="mb-6 flex items-center justify-between">
+    <h1 class="font-heading text-2xl font-bold text-brand-ink">Licencias y vacaciones</h1>
+    @if (canCreate) {
+      <button ui-button type="button" (click)="openCreateModal()">+ Nueva solicitud</button>
+    }
+  </div>
+
+  @if (canManage) {
+    <div class="mb-6 flex flex-wrap gap-3">
+      <div class="w-56">
+        <ui-select label="Empleado" [options]="employeeFilterOptions" [(ngModel)]="filterEmployeeId"></ui-select>
+      </div>
+      <div class="w-48">
+        <ui-select label="Estado" [options]="estadoFilterOptions" [(ngModel)]="filterEstado"></ui-select>
+      </div>
+    </div>
+  }
+
+  @if (loading) {
+    <p class="text-sm text-brand-muted">Cargando solicitudes...</p>
+  } @else if (loadError) {
+    <p class="rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ loadError }}</p>
+  } @else if (filteredRequests.length === 0) {
+    <p class="text-sm text-brand-muted">No hay solicitudes para mostrar.</p>
+  } @else {
+    <div class="space-y-4">
+      @for (req of filteredRequests; track req.id) {
+        <article class="rounded-xl border border-brand-line bg-brand-card shadow-sm">
+          <header class="flex flex-wrap items-start justify-between gap-2 border-b border-brand-line px-5 py-4">
+            <div>
+              @if (canManage) {
+                <p class="font-semibold text-brand-ink">{{ req.employeeNombre }} {{ req.employeeApellido }}</p>
+              }
+              <p class="text-sm font-medium text-brand-ink">{{ req.leaveTypeName }}</p>
+              <p class="text-sm text-brand-muted">{{ req.fechaInicio }} — {{ req.fechaFin }}</p>
+              @if (req.motivo) {
+                <p class="mt-1 text-xs text-brand-muted">{{ req.motivo }}</p>
+              }
+            </div>
+            <ui-badge [variant]="estadoBadge(req.estado)">{{ req.estado }}</ui-badge>
+          </header>
+
+          <!-- Acciones -->
+          <div class="flex flex-col gap-1 px-5 py-3">
+            @if (approveErrors[req.id]) {
+              <p class="text-xs text-badge-error-ink" role="alert">{{ approveErrors[req.id] }}</p>
+            }
+            <div class="flex flex-wrap justify-end gap-2">
+              @if (canManage && req.estado === 'PENDIENTE') {
+                <button ui-button size="sm" type="button"
+                  [disabled]="approvingId === req.id"
+                  (click)="approve(req)">
+                  {{ approvingId === req.id ? 'Aprobando...' : 'Aprobar' }}
+                </button>
+                <button ui-button variant="secondary" size="sm" type="button"
+                  (click)="openRejectModal(req)">
+                  Rechazar
+                </button>
+              }
+              @if (canManage && req.estado === 'APROBADA') {
+                <button ui-button variant="secondary" size="sm" type="button"
+                  (click)="openRejectModal(req)">
+                  Rechazar
+                </button>
+              }
+              @if (canCancel(req)) {
+                <button ui-button variant="secondary" size="sm" type="button"
+                  (click)="openCancelModal(req)">
+                  Cancelar solicitud
+                </button>
+              }
+            </div>
+          </div>
+        </article>
+      }
+    </div>
+  }
+</main>
+
+<!-- Modal: nueva solicitud -->
+@if (showCreateModal) {
+  <ui-modal title="Nueva solicitud de licencia" (closed)="closeCreateModal()">
+    @if (createError) {
+      <p class="mb-4 rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ createError }}</p>
+    }
+    <form [formGroup]="createForm" class="space-y-4">
+      @if (role !== 'EMPLOYEE') {
+        <ui-select
+          label="Empleado"
+          formControlName="employeeId"
+          [options]="employeeSelectOptions"
+          placeholder="Seleccioná un empleado"
+          [errorMessage]="employeeIdCtrl.invalid && employeeIdCtrl.touched ? 'El empleado es requerido.' : undefined"
+        ></ui-select>
+      }
+      <ui-select
+        label="Tipo de licencia"
+        formControlName="leaveTypeId"
+        [options]="leaveTypeOptions"
+        placeholder="Seleccioná un tipo"
+        [errorMessage]="leaveTypeIdCtrl.invalid && leaveTypeIdCtrl.touched ? 'El tipo es requerido.' : undefined"
+      ></ui-select>
+      <ui-input
+        label="Fecha de inicio"
+        type="date"
+        formControlName="fechaInicio"
+        [errorMessage]="fechaInicioCtrl.invalid && fechaInicioCtrl.touched ? 'La fecha de inicio es requerida.' : undefined"
+      ></ui-input>
+      <ui-input
+        label="Fecha de fin"
+        type="date"
+        formControlName="fechaFin"
+        [errorMessage]="fechaFinCtrl.invalid && fechaFinCtrl.touched ? 'La fecha de fin es requerida.' : undefined"
+      ></ui-input>
+      <ui-input label="Motivo (opcional)" formControlName="motivo"></ui-input>
+    </form>
+    <div class="mt-6 flex justify-end gap-2">
+      <button ui-button variant="secondary" type="button" (click)="closeCreateModal()">Cancelar</button>
+      <button ui-button type="button" [disabled]="creating" (click)="submitCreate()">
+        {{ creating ? 'Enviando...' : 'Enviar solicitud' }}
+      </button>
+    </div>
+  </ui-modal>
+}
+
+<!-- Modal: rechazar solicitud -->
+@if (rejectTarget) {
+  <ui-modal title="Rechazar solicitud" (closed)="closeRejectModal()">
+    @if (rejectError) {
+      <p class="mb-4 rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ rejectError }}</p>
+    }
+    <p class="mb-4 text-sm text-brand-ink">
+      Vas a rechazar la solicitud de licencia de
+      <strong>{{ rejectTarget.employeeNombre }} {{ rejectTarget.employeeApellido }}</strong>
+      ({{ rejectTarget.leaveTypeName }}, {{ rejectTarget.fechaInicio }} — {{ rejectTarget.fechaFin }}).
+    </p>
+    <form [formGroup]="rejectForm">
+      <ui-input
+        label="Motivo del rechazo"
+        formControlName="motivo"
+        [errorMessage]="rejectForm.get('motivo')!.invalid && rejectForm.get('motivo')!.touched ? 'El motivo es requerido.' : undefined"
+      ></ui-input>
+    </form>
+    <div class="mt-6 flex justify-end gap-2">
+      <button ui-button variant="secondary" type="button" (click)="closeRejectModal()">Cancelar</button>
+      <button ui-button type="button" [disabled]="rejecting" (click)="confirmReject()">
+        {{ rejecting ? 'Rechazando...' : 'Confirmar rechazo' }}
+      </button>
+    </div>
+  </ui-modal>
+}
+
+<!-- Modal: cancelar solicitud -->
+@if (cancelTarget) {
+  <ui-modal title="Cancelar solicitud" (closed)="closeCancelModal()">
+    @if (cancelError) {
+      <p class="mb-4 rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ cancelError }}</p>
+    }
+    <p class="text-sm text-brand-ink">
+      ¿Confirmás que querés cancelar tu solicitud de
+      <strong>{{ cancelTarget.leaveTypeName }}</strong>
+      del <strong>{{ cancelTarget.fechaInicio }}</strong> al <strong>{{ cancelTarget.fechaFin }}</strong>?
+    </p>
+    <div class="mt-6 flex justify-end gap-2">
+      <button ui-button variant="secondary" type="button" (click)="closeCancelModal()">Volver</button>
+      <button ui-button type="button" [disabled]="cancelling" (click)="confirmCancel()">
+        {{ cancelling ? 'Cancelando...' : 'Confirmar cancelación' }}
+      </button>
+    </div>
+  </ui-modal>
+}
+
+<!-- Modal: tipo de licencia (ADMIN) -->
+@if (showTypeModal) {
+  <ui-modal
+    [title]="editingType ? 'Editar tipo de licencia' : 'Nuevo tipo de licencia'"
+    (closed)="closeTypeModal()"
+  >
+    @if (typeError) {
+      <p class="mb-4 rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">
+        {{ typeError }}
+      </p>
+    }
+    <form [formGroup]="typeForm" class="space-y-4">
+      <ui-input
+        label="Nombre"
+        formControlName="nombre"
+        [errorMessage]="nombreTypeCtrl.invalid && nombreTypeCtrl.touched ? 'El nombre es requerido.' : undefined"
+      ></ui-input>
+      <div class="flex items-center gap-3">
+        <input id="esPaga" type="checkbox" formControlName="esPaga" class="h-4 w-4 rounded border-brand-line" />
+        <label for="esPaga" class="text-sm text-brand-ink">Es licencia paga</label>
+      </div>
+      <div class="flex items-center gap-3">
+        <input id="tieneCupoAnual" type="checkbox" formControlName="tieneCupoAnual" class="h-4 w-4 rounded border-brand-line" />
+        <label for="tieneCupoAnual" class="text-sm text-brand-ink">Tiene cupo anual de días</label>
+      </div>
+      @if (typeForm.get('tieneCupoAnual')!.value) {
+        <ui-input
+          label="Días por año"
+          type="number"
+          formControlName="cuposDiasAnual"
+        ></ui-input>
+      }
+    </form>
+    <div class="mt-6 flex justify-end gap-2">
+      <button ui-button variant="secondary" type="button" (click)="closeTypeModal()">Cancelar</button>
+      <button ui-button type="button" [disabled]="savingType" (click)="submitType()">
+        {{ savingType ? 'Guardando...' : (editingType ? 'Guardar cambios' : 'Crear tipo') }}
+      </button>
+    </div>
+  </ui-modal>
+}

@@ -1,4 +1,4 @@
-export type EstadoPeriodo = 'ABIERTO' | 'CERRADO' | 'REABIERTO';
+export type EstadoPeriodo = 'ABIERTO' | 'CERRADO' | 'REABIERTO' | 'PAGADO';
 
 export interface PayrollPeriod {
   id: string;

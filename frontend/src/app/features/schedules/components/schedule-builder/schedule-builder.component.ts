@@ -72,6 +72,8 @@ export class ScheduleBuilderComponent implements OnInit {
   employees: Employee[] = [];
   schedules: Schedule[] = [];
 
+  myEmployeeId: string | null = null;
+
   loading = false;
   loadError: string | null = null;
   branchesError: string | null = null;
@@ -143,6 +145,19 @@ export class ScheduleBuilderComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    if (this.role === 'EMPLOYEE') {
+      this.employeeService.me().subscribe({
+        next: (emp) => {
+          this.myEmployeeId = emp.id;
+          this.loadSchedules();
+        },
+        error: () => {
+          this.loadError = 'No se pudo obtener tu información de empleado.';
+        },
+      });
+      return;
+    }
+
     this.branchService.list().subscribe({
       next: (branches) => {
         this.branches = branches;
@@ -157,9 +172,7 @@ export class ScheduleBuilderComponent implements OnInit {
     });
 
     this.employeeService.list().subscribe({
-      next: (employees) => {
-        this.employees = employees;
-      },
+      next: (employees) => { this.employees = employees; },
       error: () => {},
     });
 
@@ -170,20 +183,26 @@ export class ScheduleBuilderComponent implements OnInit {
   }
 
   loadSchedules(): void {
+    const desde = toIsoDate(this.currentWeekStart);
+    const hasta = toIsoDate(this.weekDays[6]);
+
+    if (this.role === 'EMPLOYEE') {
+      if (!this.myEmployeeId) return;
+      this.loading = true;
+      this.loadError = null;
+      this.scheduleService.list({ employeeId: this.myEmployeeId, desde, hasta }).subscribe({
+        next: (schedules) => { this.schedules = schedules; this.loading = false; },
+        error: () => { this.loading = false; this.loadError = 'No se pudieron cargar tus turnos.'; },
+      });
+      return;
+    }
+
     if (!this.selectedBranchId) return;
     this.loading = true;
     this.loadError = null;
-    const desde = toIsoDate(this.currentWeekStart);
-    const hasta = toIsoDate(this.weekDays[6]);
     this.scheduleService.list({ branchId: this.selectedBranchId, desde, hasta }).subscribe({
-      next: (schedules) => {
-        this.schedules = schedules;
-        this.loading = false;
-      },
-      error: () => {
-        this.loading = false;
-        this.loadError = 'No se pudieron cargar los turnos.';
-      },
+      next: (schedules) => { this.schedules = schedules; this.loading = false; },
+      error: () => { this.loading = false; this.loadError = 'No se pudieron cargar los turnos.'; },
     });
   }
 
@@ -201,31 +220,42 @@ export class ScheduleBuilderComponent implements OnInit {
     this.loadSchedules();
   }
 
-  schedulesForDay(day: Date): Schedule[] {
-    return this.schedules.filter((s) => isSameDay(new Date(s.fechaHoraInicio), day));
+  isContinuation(s: Schedule, day: Date): boolean {
+    const start = new Date(s.fechaHoraInicio);
+    const end = new Date(s.fechaHoraFin);
+    const prev = new Date(day);
+    prev.setDate(prev.getDate() - 1);
+    return isSameDay(start, prev) && isSameDay(end, day);
   }
 
-  blockTopPx(s: Schedule): number {
+  schedulesForDay(day: Date): Schedule[] {
+    return this.schedules.filter((s) => {
+      const start = new Date(s.fechaHoraInicio);
+      if (isSameDay(start, day)) return true;
+      return this.isContinuation(s, day);
+    });
+  }
+
+  blockTopPx(s: Schedule, day: Date): number {
+    if (this.isContinuation(s, day)) return 0;
     const start = new Date(s.fechaHoraInicio);
     const startMinutes = start.getHours() * 60 + start.getMinutes();
     return Math.max(0, startMinutes - this.visibleStartHour * 60);
   }
 
-  blockHeightPx(s: Schedule): number {
-    const start = new Date(s.fechaHoraInicio);
+  blockHeightPx(s: Schedule, day: Date): number {
     const end = new Date(s.fechaHoraFin);
-
+    const endMinutes = end.getHours() * 60 + end.getMinutes();
+    if (this.isContinuation(s, day)) {
+      return Math.max(30, endMinutes - this.visibleStartHour * 60);
+    }
+    const start = new Date(s.fechaHoraInicio);
     const startMinutes = start.getHours() * 60 + start.getMinutes();
-    const endMinutes =
-      end.getDate() !== start.getDate()
-        ? 24 * 60 // crosses midnight: clip to day boundary
-        : end.getHours() * 60 + end.getMinutes();
-
+    const effectiveEnd = end.getDate() !== start.getDate() ? 24 * 60 : endMinutes;
     const visibleStartMin = this.visibleStartHour * 60;
     const visibleEndMin = this.visibleEndHour * 60;
     const clampedStart = Math.max(startMinutes, visibleStartMin);
-    const clampedEnd = Math.min(endMinutes, visibleEndMin);
-
+    const clampedEnd = Math.min(effectiveEnd, visibleEndMin);
     return Math.max(30, clampedEnd - clampedStart);
   }
 
@@ -233,6 +263,16 @@ export class ScheduleBuilderComponent implements OnInit {
     const start = new Date(s.fechaHoraInicio);
     const end = new Date(s.fechaHoraFin);
     return end.getDate() !== start.getDate();
+  }
+
+  continuationFromTime(s: Schedule): string {
+    const start = new Date(s.fechaHoraInicio);
+    return `${pad2(start.getHours())}:${pad2(start.getMinutes())}`;
+  }
+
+  formatEndTime(s: Schedule): string {
+    const end = new Date(s.fechaHoraFin);
+    return `${pad2(end.getHours())}:${pad2(end.getMinutes())}`;
   }
 
   getEmployeeName(employeeId: string): string {

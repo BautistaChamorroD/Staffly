@@ -55,12 +55,15 @@ export class PayslipsListComponent implements OnInit {
   downloadingIds = new Set<string>();
   pdfErrors: Record<string, string> = {};
 
+  markingPaidId: string | null = null;
+  markPaidErrors: Record<string, string> = {};
+
   voidTarget: Payslip | null = null;
   voidError: string | null = null;
   voiding = false;
 
   voidForm = this.fb.group({
-    motivoAnulacion: ['', Validators.maxLength(1000)],
+    motivo: ['', [Validators.required, Validators.maxLength(1000)]],
   });
 
   get employeeOptions(): SelectOption[] {
@@ -90,6 +93,7 @@ export class PayslipsListComponent implements OnInit {
       case 'GENERADO': return 'warning';
       case 'PAGADO':   return 'success';
       case 'ANULADO':  return 'neutral';
+      case 'AJUSTE':   return 'info';
     }
   }
 
@@ -112,7 +116,7 @@ export class PayslipsListComponent implements OnInit {
         },
       });
     } else {
-      this.payslipService.me().subscribe({
+      this.payslipService.list().subscribe({
         next: (payslips) => {
           this.payslips = payslips;
           this.loading = false;
@@ -145,6 +149,23 @@ export class PayslipsListComponent implements OnInit {
     });
   }
 
+  markPaid(payslip: Payslip): void {
+    this.markingPaidId = payslip.id;
+    delete this.markPaidErrors[payslip.id];
+    this.payslipService.markPaid(payslip.id).subscribe({
+      next: (updated) => {
+        this.markingPaidId = null;
+        const idx = this.payslips.findIndex((p) => p.id === payslip.id);
+        if (idx !== -1) this.payslips[idx] = updated;
+        this.payslips = [...this.payslips];
+      },
+      error: () => {
+        this.markingPaidId = null;
+        this.markPaidErrors[payslip.id] = 'No se pudo marcar como pagado. Intentá de nuevo.';
+      },
+    });
+  }
+
   openVoidModal(payslip: Payslip): void {
     this.voidTarget = payslip;
     this.voidError = null;
@@ -156,12 +177,14 @@ export class PayslipsListComponent implements OnInit {
   }
 
   confirmVoid(): void {
+    this.voidForm.markAllAsTouched();
+    if (this.voidForm.invalid) return;
     const target = this.voidTarget;
     if (!target) return;
     this.voiding = true;
     this.voidError = null;
-    const motivo = this.voidForm.getRawValue().motivoAnulacion || undefined;
-    this.payslipService.voidAndAdjust(target.id, { motivoAnulacion: motivo }).subscribe({
+    const motivo = this.voidForm.getRawValue().motivo || undefined;
+    this.payslipService.voidAndAdjust(target.id, { motivo }).subscribe({
       next: (adjustment) => {
         this.voiding = false;
         this.voidTarget = null;

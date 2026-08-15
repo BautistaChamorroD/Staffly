@@ -1,6 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 
 import { environment } from '../../../../environments/environment';
 import {
@@ -27,7 +28,9 @@ export class EmployeeService {
     if (filters.search) {
       params = params.set('search', filters.search);
     }
-    return this.http.get<Employee[]>(this.baseUrl, { params });
+    return this.http.get<Employee[] | { content: Employee[] }>(this.baseUrl, { params }).pipe(
+      map((r) => (Array.isArray(r) ? r : r.content)),
+    );
   }
 
   create(request: CreateEmployeeRequest): Observable<Employee> {
