@@ -74,6 +74,14 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'advances',
+    canActivate: [roleGuard(['ADMIN', 'RRHH', 'EMPLOYEE']), forcePasswordChangeGuard],
+    loadComponent: () =>
+      import('./features/advances/components/advances-list/advances-list.component').then(
+        (m) => m.AdvancesListComponent,
+      ),
+  },
+  {
     path: '',
     canActivate: [authGuard, forcePasswordChangeGuard],
     loadComponent: () => import('./core/home/home.component').then((m) => m.HomeComponent),
