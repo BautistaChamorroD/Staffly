@@ -52,6 +52,9 @@ export class PayslipsListComponent implements OnInit {
   filterEmployeeId = '';
   filterPeriodId = '';
 
+  downloadingIds = new Set<string>();
+  pdfErrors: Record<string, string> = {};
+
   voidTarget: Payslip | null = null;
   voidError: string | null = null;
   voiding = false;
@@ -120,6 +123,26 @@ export class PayslipsListComponent implements OnInit {
         },
       });
     }
+  }
+
+  downloadPdf(payslip: Payslip): void {
+    this.downloadingIds.add(payslip.id);
+    delete this.pdfErrors[payslip.id];
+    this.payslipService.downloadPdf(payslip.id).subscribe({
+      next: (blob) => {
+        this.downloadingIds.delete(payslip.id);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `recibo-${payslip.periodoInicio}_${payslip.periodoFin}-${payslip.employeeApellido}.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
+      },
+      error: () => {
+        this.downloadingIds.delete(payslip.id);
+        this.pdfErrors[payslip.id] = 'No se pudo descargar el PDF. Intentá de nuevo.';
+      },
+    });
   }
 
   openVoidModal(payslip: Payslip): void {

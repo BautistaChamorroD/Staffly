@@ -121,12 +121,24 @@
             </span>
           </footer>
 
-          <!-- Acción: anular (solo ADMIN, solo PAGADO) -->
-          @if (isAdmin && p.estado === 'PAGADO') {
-            <div class="flex justify-end px-5 py-3">
-              <button ui-button variant="secondary" size="sm" type="button" (click)="openVoidModal(p)">
-                Anular recibo
-              </button>
+          <!-- Acciones: descargar PDF y/o anular -->
+          @if (p.estado === 'PAGADO' || p.tipo === 'AJUSTE') {
+            <div class="flex flex-col gap-1 px-5 py-3">
+              <div class="flex flex-wrap justify-end gap-2">
+                <button ui-button variant="secondary" size="sm" type="button"
+                  [disabled]="downloadingIds.has(p.id)"
+                  (click)="downloadPdf(p)">
+                  {{ downloadingIds.has(p.id) ? 'Descargando...' : 'Descargar PDF' }}
+                </button>
+                @if (isAdmin && p.estado === 'PAGADO') {
+                  <button ui-button variant="secondary" size="sm" type="button" (click)="openVoidModal(p)">
+                    Anular recibo
+                  </button>
+                }
+              </div>
+              @if (pdfErrors[p.id]) {
+                <p class="text-right text-xs text-badge-error-ink" role="alert">{{ pdfErrors[p.id] }}</p>
+              }
             </div>
           }
 
