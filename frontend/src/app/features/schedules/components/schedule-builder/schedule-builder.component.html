@@ -109,22 +109,31 @@
                     [class]="s.warning === 'OUT_OF_AVAILABILITY'
                       ? 'border border-dashed border-badge-warning-ink bg-badge-warning-bg ring-1 ring-badge-warning-ink'
                       : 'bg-brand-acc ring-1 ring-brand-line'"
-                    [style.top.px]="blockTopPx(s)"
-                    [style.height.px]="blockHeightPx(s)"
+                    [style.top.px]="blockTopPx(s, day)"
+                    [style.height.px]="blockHeightPx(s, day)"
                     (click)="openBlockDetail(s)"
                   >
                     <div class="flex items-center justify-between gap-0.5">
                       <div class="truncate font-semibold text-brand-ink">
-                        @if (role === 'EMPLOYEE') { Mi turno } @else { {{ getEmployeeName(s.employeeId) }} }
+                        @if (isContinuation(s, day)) {
+                          <span class="text-xs">&#8627; continúa de {{ continuationFromTime(s) }}</span>
+                        } @else if (role === 'EMPLOYEE') {
+                          Mi turno
+                        } @else {
+                          {{ getEmployeeName(s.employeeId) }}
+                        }
                       </div>
                       @if (s.warning === 'OUT_OF_AVAILABILITY') {
                         <span class="shrink-0 text-badge-warning-ink" title="Fuera de disponibilidad declarada">⚠</span>
                       }
                     </div>
-                    <div class="text-brand-muted">{{ formatTimeRange(s) }}</div>
-                    @if (crossesMidnight(s)) {
-                      <div class="mt-px text-[10px] text-brand-muted">&#8618; continúa</div>
-                    }
+                    <div class="text-brand-muted">
+                      @if (isContinuation(s, day)) {
+                        hasta {{ formatEndTime(s) }}
+                      } @else {
+                        {{ formatTimeRange(s) }}
+                      }
+                    </div>
                   </div>
                 }
               </div>

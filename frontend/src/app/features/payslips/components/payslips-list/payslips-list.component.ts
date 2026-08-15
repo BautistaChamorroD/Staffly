@@ -60,7 +60,7 @@ export class PayslipsListComponent implements OnInit {
   voiding = false;
 
   voidForm = this.fb.group({
-    motivo: ['', Validators.maxLength(1000)],
+    motivo: ['', [Validators.required, Validators.maxLength(1000)]],
   });
 
   get employeeOptions(): SelectOption[] {
@@ -157,6 +157,8 @@ export class PayslipsListComponent implements OnInit {
   }
 
   confirmVoid(): void {
+    this.voidForm.markAllAsTouched();
+    if (this.voidForm.invalid) return;
     const target = this.voidTarget;
     if (!target) return;
     this.voiding = true;

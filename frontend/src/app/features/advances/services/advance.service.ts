@@ -1,6 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 
 import { environment } from '../../../../environments/environment';
 import { Advance, CreateAdvanceRequest } from '../models/advance';
@@ -13,7 +14,9 @@ export class AdvanceService {
   list(employeeId?: string): Observable<Advance[]> {
     let params = new HttpParams();
     if (employeeId) params = params.set('employeeId', employeeId);
-    return this.http.get<Advance[]>(this.baseUrl, { params });
+    return this.http.get<Advance[] | { content: Advance[] }>(this.baseUrl, { params }).pipe(
+      map((r) => (Array.isArray(r) ? r : r.content)),
+    );
   }
 
   create(request: CreateAdvanceRequest): Observable<Advance> {

@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 
 import { environment } from '../../../../environments/environment';
 import { CreatePayrollPeriodRequest, PayrollPeriod } from '../models/payroll-period';
@@ -11,7 +12,9 @@ export class PayrollPeriodService {
   private baseUrl = `${environment.apiUrl}/payroll-periods`;
 
   list(): Observable<PayrollPeriod[]> {
-    return this.http.get<PayrollPeriod[]>(this.baseUrl);
+    return this.http.get<PayrollPeriod[] | { content: PayrollPeriod[] }>(this.baseUrl).pipe(
+      map((r) => (Array.isArray(r) ? r : r.content)),
+    );
   }
 
   create(request: CreatePayrollPeriodRequest): Observable<PayrollPeriod> {

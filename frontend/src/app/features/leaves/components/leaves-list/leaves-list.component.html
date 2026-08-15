@@ -1,4 +1,37 @@
 <main class="mx-auto max-w-3xl px-4 py-8">
+  @if (isAdmin) {
+    <section class="mb-6 rounded-xl border border-brand-line bg-brand-card p-5 shadow-sm">
+      <div class="mb-3 flex items-center justify-between">
+        <h2 class="font-heading text-base font-semibold text-brand-ink">Tipos de licencia</h2>
+        <button ui-button variant="secondary" size="sm" type="button" (click)="openNewTypeModal()">
+          + Nuevo tipo
+        </button>
+      </div>
+      @if (leaveTypes.length === 0) {
+        <p class="text-sm text-brand-muted">No hay tipos configurados.</p>
+      } @else {
+        <ul class="divide-y divide-brand-line">
+          @for (t of leaveTypes; track t.id) {
+            <li class="flex items-center justify-between py-2.5">
+              <div>
+                <span class="text-sm font-medium text-brand-ink">{{ t.nombre }}</span>
+                <span class="ml-2 text-xs text-brand-muted">
+                  {{ t.esPaga ? 'Paga' : 'No paga' }}
+                  @if (t.tieneCupoAnual && t.cuposDiasAnual != null) {
+                    · {{ t.cuposDiasAnual }} días/año
+                  }
+                </span>
+              </div>
+              <button ui-button variant="secondary" size="sm" type="button" (click)="openEditTypeModal(t)">
+                Editar
+              </button>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+  }
+
   <div class="mb-6 flex items-center justify-between">
     <h1 class="font-heading text-2xl font-bold text-brand-ink">Licencias y vacaciones</h1>
     <button ui-button type="button" (click)="openCreateModal()">+ Nueva solicitud</button>
@@ -62,7 +95,7 @@
                   Rechazar
                 </button>
               }
-              @if (!canManage && canCancel(req)) {
+              @if (canCancel(req)) {
                 <button ui-button variant="secondary" size="sm" type="button"
                   (click)="openCancelModal(req)">
                   Cancelar solicitud
@@ -155,6 +188,48 @@
       <button ui-button variant="secondary" type="button" (click)="closeCancelModal()">Volver</button>
       <button ui-button type="button" [disabled]="cancelling" (click)="confirmCancel()">
         {{ cancelling ? 'Cancelando...' : 'Confirmar cancelación' }}
+      </button>
+    </div>
+  </ui-modal>
+}
+
+<!-- Modal: tipo de licencia (ADMIN) -->
+@if (showTypeModal) {
+  <ui-modal
+    [title]="editingType ? 'Editar tipo de licencia' : 'Nuevo tipo de licencia'"
+    (closed)="closeTypeModal()"
+  >
+    @if (typeError) {
+      <p class="mb-4 rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">
+        {{ typeError }}
+      </p>
+    }
+    <form [formGroup]="typeForm" class="space-y-4">
+      <ui-input
+        label="Nombre"
+        formControlName="nombre"
+        [errorMessage]="nombreTypeCtrl.invalid && nombreTypeCtrl.touched ? 'El nombre es requerido.' : undefined"
+      ></ui-input>
+      <div class="flex items-center gap-3">
+        <input id="esPaga" type="checkbox" formControlName="esPaga" class="h-4 w-4 rounded border-brand-line" />
+        <label for="esPaga" class="text-sm text-brand-ink">Es licencia paga</label>
+      </div>
+      <div class="flex items-center gap-3">
+        <input id="tieneCupoAnual" type="checkbox" formControlName="tieneCupoAnual" class="h-4 w-4 rounded border-brand-line" />
+        <label for="tieneCupoAnual" class="text-sm text-brand-ink">Tiene cupo anual de días</label>
+      </div>
+      @if (typeForm.get('tieneCupoAnual')!.value) {
+        <ui-input
+          label="Días por año"
+          type="number"
+          formControlName="cuposDiasAnual"
+        ></ui-input>
+      }
+    </form>
+    <div class="mt-6 flex justify-end gap-2">
+      <button ui-button variant="secondary" type="button" (click)="closeTypeModal()">Cancelar</button>
+      <button ui-button type="button" [disabled]="savingType" (click)="submitType()">
+        {{ savingType ? 'Guardando...' : (editingType ? 'Guardar cambios' : 'Crear tipo') }}
       </button>
     </div>
   </ui-modal>

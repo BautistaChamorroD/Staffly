@@ -75,6 +75,19 @@ export class LeavesListComponent implements OnInit {
   cancelError: string | null = null;
   cancelling = false;
 
+  // ── Tipos de licencia (ADMIN) ──────────────────────────────────────────────
+  showTypeModal = false;
+  editingType: LeaveType | null = null;
+  typeError: string | null = null;
+  savingType = false;
+
+  typeForm = this.fb.group({
+    nombre: ['', [Validators.required, Validators.maxLength(100)]],
+    esPaga: [false],
+    tieneCupoAnual: [false],
+    cuposDiasAnual: [null as number | null],
+  });
+
   // Approve state (inline, no modal)
   approvingId: string | null = null;
   approveErrors: Record<string, string> = {};
@@ -287,5 +300,66 @@ export class LeavesListComponent implements OnInit {
 
   canCancel(req: LeaveRequest): boolean {
     return req.estado === 'PENDIENTE' || req.estado === 'APROBADA';
+  }
+
+  // ── Tipos de licencia (ADMIN) ──────────────────────────────────────────────
+
+  get nombreTypeCtrl() { return this.typeForm.get('nombre')!; }
+
+  openNewTypeModal(): void {
+    this.editingType = null;
+    this.typeError = null;
+    this.typeForm.reset({ nombre: '', esPaga: false, tieneCupoAnual: false, cuposDiasAnual: null });
+    this.showTypeModal = true;
+  }
+
+  openEditTypeModal(type: LeaveType): void {
+    this.editingType = type;
+    this.typeError = null;
+    this.typeForm.patchValue({
+      nombre: type.nombre,
+      esPaga: type.esPaga,
+      tieneCupoAnual: type.tieneCupoAnual,
+      cuposDiasAnual: type.cuposDiasAnual,
+    });
+    this.showTypeModal = true;
+  }
+
+  closeTypeModal(): void {
+    this.showTypeModal = false;
+  }
+
+  submitType(): void {
+    if (this.typeForm.invalid) {
+      this.typeForm.markAllAsTouched();
+      return;
+    }
+    this.savingType = true;
+    this.typeError = null;
+    const raw = this.typeForm.getRawValue();
+    const body: Partial<LeaveType> = {
+      nombre: raw.nombre!,
+      esPaga: raw.esPaga ?? false,
+      tieneCupoAnual: raw.tieneCupoAnual ?? false,
+      cuposDiasAnual: raw.tieneCupoAnual ? (raw.cuposDiasAnual ?? null) : null,
+    };
+    const op$ = this.editingType
+      ? this.leaveTypeService.update(this.editingType.id, body)
+      : this.leaveTypeService.create(body);
+    op$.subscribe({
+      next: (saved) => {
+        this.savingType = false;
+        this.showTypeModal = false;
+        if (this.editingType) {
+          this.leaveTypes = this.leaveTypes.map((t) => (t.id === saved.id ? saved : t));
+        } else {
+          this.leaveTypes = [...this.leaveTypes, saved];
+        }
+      },
+      error: () => {
+        this.savingType = false;
+        this.typeError = 'No se pudo guardar el tipo de licencia. Intentá de nuevo.';
+      },
+    });
   }
 }

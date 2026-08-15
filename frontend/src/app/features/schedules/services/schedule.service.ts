@@ -1,6 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 
 import { environment } from '../../../../environments/environment';
 import { CreateScheduleRequest, Schedule, ScheduleFilters } from '../models/schedule';
@@ -16,7 +17,9 @@ export class ScheduleService {
     if (filters.employeeId) params = params.set('employeeId', filters.employeeId);
     if (filters.desde) params = params.set('desde', filters.desde);
     if (filters.hasta) params = params.set('hasta', filters.hasta);
-    return this.http.get<Schedule[]>(this.baseUrl, { params });
+    return this.http.get<Schedule[] | { content: Schedule[] }>(this.baseUrl, { params }).pipe(
+      map((r) => (Array.isArray(r) ? r : r.content)),
+    );
   }
 
   create(request: CreateScheduleRequest): Observable<Schedule> {

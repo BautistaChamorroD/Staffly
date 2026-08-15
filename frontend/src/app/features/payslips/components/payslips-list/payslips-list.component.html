@@ -168,8 +168,9 @@
     </p>
     <form [formGroup]="voidForm" class="mt-4">
       <ui-input
-        label="Motivo de anulación (opcional)"
+        label="Motivo de anulación"
         formControlName="motivo"
+        [errorMessage]="voidForm.get('motivo')!.invalid && voidForm.get('motivo')!.touched ? 'El motivo es requerido.' : undefined"
       ></ui-input>
     </form>
     <div class="mt-6 flex justify-end gap-2">
