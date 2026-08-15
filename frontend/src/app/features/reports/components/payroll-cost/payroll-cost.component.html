@@ -1,10 +1,99 @@
 <main class="mx-auto max-w-5xl px-4 py-8">
-  <div class="mb-6 flex items-center gap-3">
-    <a routerLink="/reports" class="text-sm text-brand-muted hover:text-brand-ink">← Reportes</a>
-    <span class="text-brand-line">/</span>
-    <h1 class="font-heading text-2xl font-bold text-brand-ink">Costo de nómina</h1>
+  <!-- Breadcrumb + título -->
+  <div class="mb-6 flex items-center gap-2 text-sm text-brand-muted">
+    <a routerLink="/reports" class="hover:text-brand-ink">Reportes</a>
+    <span>/</span>
+    <span class="font-medium text-brand-ink">Costo de nómina</span>
+  </div>
+  <h1 class="font-heading mb-6 text-2xl font-bold text-brand-ink">Costo de nómina</h1>
+
+  <!-- Filtros -->
+  <div class="mb-6 rounded-xl border border-brand-line bg-brand-card p-5 shadow-sm">
+    <div class="flex flex-wrap items-end gap-4">
+      <div class="w-56">
+        <ui-select label="Sucursal" [options]="branchOptions" [(ngModel)]="filterBranchId"></ui-select>
+      </div>
+      <div class="w-44">
+        <ui-input label="Desde" type="date" [(ngModel)]="filterDesde"></ui-input>
+      </div>
+      <div class="w-44">
+        <ui-input label="Hasta" type="date" [(ngModel)]="filterHasta"></ui-input>
+      </div>
+      <button ui-button type="button" [disabled]="loading" (click)="generate()">
+        {{ loading ? 'Cargando...' : 'Generar' }}
+      </button>
+    </div>
   </div>
 
-  <!-- FE-4.3: filtros, tabla y botón de exportación -->
-  <p class="text-sm text-brand-muted">En desarrollo — disponible en la próxima iteración.</p>
+  <!-- Error -->
+  @if (loadError) {
+    <p class="mb-4 rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ loadError }}</p>
+  }
+
+  @if (!hasLoaded && !loading && !loadError) {
+    <p class="text-sm text-brand-muted">Seleccioná los filtros y hacé clic en <strong>Generar</strong> para ver el reporte.</p>
+  }
+
+  @if (hasLoaded) {
+    <!-- Acciones de exportación -->
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <p class="text-sm text-brand-muted">
+        {{ rows.length }} {{ rows.length === 1 ? 'sucursal' : 'sucursales' }}
+      </p>
+      <div class="flex items-center gap-2">
+        @if (exportError) {
+          <p class="text-xs text-badge-error-ink" role="alert">{{ exportError }}</p>
+        }
+        <button ui-button variant="secondary" size="sm" type="button"
+          [disabled]="rows.length === 0 || exportingCsv"
+          (click)="export('csv')">
+          {{ exportingCsv ? 'Exportando...' : 'Exportar CSV' }}
+        </button>
+        <button ui-button variant="secondary" size="sm" type="button"
+          [disabled]="rows.length === 0 || exportingPdf"
+          (click)="export('pdf')">
+          {{ exportingPdf ? 'Exportando...' : 'Exportar PDF' }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Tabla -->
+    @if (rows.length === 0) {
+      <p class="text-sm text-brand-muted">No hay datos para el período seleccionado.</p>
+    } @else {
+      <div class="overflow-x-auto rounded-xl border border-brand-line">
+        <table class="w-full text-sm">
+          <thead class="bg-brand-card text-xs font-semibold uppercase tracking-wide text-brand-muted">
+            <tr>
+              <th class="px-4 py-3 text-left">Sucursal</th>
+              <th class="px-4 py-3 text-right">Empleados</th>
+              <th class="px-4 py-3 text-right">Total bruto</th>
+              <th class="px-4 py-3 text-right">Deducciones</th>
+              <th class="px-4 py-3 text-right font-bold">Neto total</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-brand-line">
+            @for (row of rows; track row.branchId) {
+              <tr class="bg-brand-card">
+                <td class="px-4 py-3 font-medium text-brand-ink">{{ row.branchNombre }}</td>
+                <td class="px-4 py-3 text-right tabular-nums text-brand-muted">{{ row.cantidadEmpleados }}</td>
+                <td class="px-4 py-3 text-right tabular-nums text-brand-ink">$ {{ row.totalBruto | number: '1.2-2' }}</td>
+                <td class="px-4 py-3 text-right tabular-nums text-brand-ink">$ {{ row.totalDeducciones | number: '1.2-2' }}</td>
+                <td class="px-4 py-3 text-right tabular-nums font-semibold text-brand-ink">$ {{ row.totalNeto | number: '1.2-2' }}</td>
+              </tr>
+            }
+          </tbody>
+          <tfoot class="border-t-2 border-brand-line bg-brand-card">
+            <tr>
+              <td class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-brand-muted">Totales</td>
+              <td class="px-4 py-3 text-right tabular-nums font-semibold text-brand-ink">{{ totals.cantidadEmpleados }}</td>
+              <td class="px-4 py-3 text-right tabular-nums font-semibold text-brand-ink">$ {{ totals.totalBruto | number: '1.2-2' }}</td>
+              <td class="px-4 py-3 text-right tabular-nums font-semibold text-brand-ink">$ {{ totals.totalDeducciones | number: '1.2-2' }}</td>
+              <td class="px-4 py-3 text-right tabular-nums font-bold text-badge-success-ink">$ {{ totals.totalNeto | number: '1.2-2' }}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    }
+  }
 </main>
