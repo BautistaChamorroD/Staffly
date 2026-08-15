@@ -1,0 +1,166 @@
+<main class="mx-auto max-w-3xl px-4 py-8">
+  <h1 class="font-heading mb-6 text-2xl font-bold text-brand-ink">Recibos de sueldo</h1>
+
+  <!-- Filtros (ADMIN / RRHH) -->
+  @if (canManage) {
+    <div class="mb-6 flex flex-wrap gap-3">
+      <div class="w-56">
+        <ui-select label="Empleado" [options]="employeeOptions" [(ngModel)]="filterEmployeeId"></ui-select>
+      </div>
+      <div class="w-64">
+        <ui-select label="Período" [options]="periodOptions" [(ngModel)]="filterPeriodId"></ui-select>
+      </div>
+    </div>
+  }
+
+  @if (loading) {
+    <p class="text-sm text-brand-muted">Cargando recibos...</p>
+  } @else if (loadError) {
+    <p class="rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ loadError }}</p>
+  } @else if (filteredPayslips.length === 0) {
+    <p class="text-sm text-brand-muted">No hay recibos para mostrar.</p>
+  } @else {
+    <div class="space-y-4">
+      @for (p of filteredPayslips; track p.id) {
+        <article class="rounded-xl border border-brand-line bg-brand-card shadow-sm">
+
+          <!-- Cabecera de la card -->
+          <header class="flex flex-wrap items-start justify-between gap-2 border-b border-brand-line px-5 py-4">
+            <div>
+              @if (canManage) {
+                <p class="font-semibold text-brand-ink">{{ p.employeeNombre }} {{ p.employeeApellido }}</p>
+              }
+              <p class="text-sm text-brand-muted">{{ p.periodoInicio }} — {{ p.periodoFin }}</p>
+              @if (p.fechaPago) {
+                <p class="text-xs text-brand-muted">Fecha de pago: {{ p.fechaPago }}</p>
+              }
+            </div>
+            <div class="flex flex-wrap gap-1.5">
+              <ui-badge [variant]="estadoBadge(p.estado)">{{ p.estado }}</ui-badge>
+              @if (p.tipo === 'AJUSTE') {
+                <ui-badge variant="info">AJUSTE</ui-badge>
+              }
+            </div>
+          </header>
+
+          <!-- Referencia al recibo original (solo recibos AJUSTE) -->
+          @if (p.tipo === 'AJUSTE' && p.payslipOriginalId) {
+            <div class="border-b border-brand-line bg-badge-info-bg px-5 py-2">
+              <p class="text-xs text-badge-info-ink">
+                Recibo de ajuste — anula al recibo original
+                <span class="font-mono">{{ p.payslipOriginalId }}</span>
+              </p>
+            </div>
+          }
+
+          <!-- Cuerpo: Haberes + Descuentos -->
+          <div class="grid grid-cols-1 gap-0 sm:grid-cols-2">
+
+            <!-- Haberes -->
+            <section class="border-b border-brand-line px-5 py-4 sm:border-b-0 sm:border-r">
+              <h2 class="mb-3 text-xs font-semibold uppercase tracking-wide text-brand-muted">Haberes</h2>
+              <ul class="space-y-1.5 text-sm">
+                @if (p.horasNormales > 0) {
+                  <li class="flex justify-between">
+                    <span class="text-brand-ink">Horas normales ({{ p.horasNormales | number: '1.0-1' }} hs)</span>
+                    <span class="tabular-nums text-brand-ink">$ {{ p.sueldoBase | number: '1.2-2' }}</span>
+                  </li>
+                }
+                @if (p.horasExtra > 0) {
+                  <li class="flex justify-between">
+                    <span class="text-brand-ink">Horas extra ({{ p.horasExtra | number: '1.0-1' }} hs)</span>
+                    <span class="tabular-nums text-brand-ink">—</span>
+                  </li>
+                }
+                @if (p.horasFeriado > 0) {
+                  <li class="flex justify-between">
+                    <span class="text-brand-ink">Horas feriado ({{ p.horasFeriado | number: '1.0-1' }} hs)</span>
+                    <span class="tabular-nums text-brand-ink">—</span>
+                  </li>
+                }
+                <li class="flex justify-between border-t border-brand-line pt-1.5 font-medium">
+                  <span class="text-brand-ink">Bruto calculado</span>
+                  <span class="tabular-nums text-brand-ink">$ {{ p.brutoCalculado | number: '1.2-2' }}</span>
+                </li>
+              </ul>
+            </section>
+
+            <!-- Descuentos -->
+            <section class="px-5 py-4">
+              <h2 class="mb-3 text-xs font-semibold uppercase tracking-wide text-brand-muted">Descuentos</h2>
+              @if (p.detalleDescuentos.length === 0 && p.totalAdelantos === 0) {
+                <p class="text-sm text-brand-muted">Sin descuentos.</p>
+              } @else {
+                <ul class="space-y-1.5 text-sm">
+                  @for (d of p.detalleDescuentos; track d.nombre) {
+                    <li class="flex justify-between">
+                      <span class="text-brand-ink">{{ d.nombre }}</span>
+                      <span class="tabular-nums text-brand-ink">$ {{ d.monto | number: '1.2-2' }}</span>
+                    </li>
+                  }
+                  @if (p.totalAdelantos > 0) {
+                    <li class="flex justify-between">
+                      <span class="text-brand-ink">Adelantos descontados</span>
+                      <span class="tabular-nums text-brand-ink">$ {{ p.totalAdelantos | number: '1.2-2' }}</span>
+                    </li>
+                  }
+                  <li class="flex justify-between border-t border-brand-line pt-1.5 font-medium">
+                    <span class="text-brand-ink">Total descuentos</span>
+                    <span class="tabular-nums text-brand-ink">$ {{ p.totalDeducciones | number: '1.2-2' }}</span>
+                  </li>
+                </ul>
+              }
+            </section>
+          </div>
+
+          <!-- Neto a cobrar -->
+          <footer class="flex items-center justify-between rounded-b-xl bg-badge-success-bg px-5 py-3">
+            <span class="font-semibold text-badge-success-ink">Neto a cobrar</span>
+            <span class="text-lg font-bold tabular-nums text-badge-success-ink">
+              $ {{ p.netoFinal | number: '1.2-2' }}
+            </span>
+          </footer>
+
+          <!-- Acción: anular (solo ADMIN, solo PAGADO) -->
+          @if (isAdmin && p.estado === 'PAGADO') {
+            <div class="flex justify-end px-5 py-3">
+              <button ui-button variant="secondary" size="sm" type="button" (click)="openVoidModal(p)">
+                Anular recibo
+              </button>
+            </div>
+          }
+
+        </article>
+      }
+    </div>
+  }
+</main>
+
+<!-- Modal: anular recibo -->
+@if (voidTarget) {
+  <ui-modal title="Anular recibo de sueldo" (closed)="closeVoidModal()">
+    @if (voidError) {
+      <p class="mb-4 rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ voidError }}</p>
+    }
+    <p class="text-sm text-brand-ink">
+      Vas a anular el recibo del período
+      <strong>{{ voidTarget.periodoInicio }} — {{ voidTarget.periodoFin }}</strong>
+      @if (canManage) {
+        de <strong>{{ voidTarget.employeeNombre }} {{ voidTarget.employeeApellido }}</strong>
+      }
+      . Se generará automáticamente un nuevo recibo de ajuste en estado GENERADO.
+    </p>
+    <form [formGroup]="voidForm" class="mt-4">
+      <ui-input
+        label="Motivo de anulación (opcional)"
+        formControlName="motivoAnulacion"
+      ></ui-input>
+    </form>
+    <div class="mt-6 flex justify-end gap-2">
+      <button ui-button variant="secondary" type="button" (click)="closeVoidModal()">Cancelar</button>
+      <button ui-button type="button" [disabled]="voiding" (click)="confirmVoid()">
+        {{ voiding ? 'Anulando...' : 'Confirmar anulación' }}
+      </button>
+    </div>
+  </ui-modal>
+}

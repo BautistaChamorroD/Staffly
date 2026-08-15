@@ -82,6 +82,14 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'payslips',
+    canActivate: [roleGuard(['ADMIN', 'RRHH', 'EMPLOYEE']), forcePasswordChangeGuard],
+    loadComponent: () =>
+      import('./features/payslips/components/payslips-list/payslips-list.component').then(
+        (m) => m.PayslipsListComponent,
+      ),
+  },
+  {
     path: '',
     canActivate: [authGuard, forcePasswordChangeGuard],
     loadComponent: () => import('./core/home/home.component').then((m) => m.HomeComponent),
