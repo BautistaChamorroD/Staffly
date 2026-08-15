@@ -19,6 +19,8 @@
   --color-badge-error-ink: #a63641;
   --color-badge-neutral-bg: #efece6;
   --color-badge-neutral-ink: #6d675d;
+  --color-badge-info-bg: #e0eefa;
+  --color-badge-info-ink: #1a5fa8;
 
   --font-heading: 'Sora', sans-serif;
   --font-sans: 'Albert Sans', system-ui, sans-serif;

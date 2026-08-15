@@ -1,6 +1,6 @@
 import { Component, Input } from '@angular/core';
 
-export type BadgeVariant = 'success' | 'warning' | 'error' | 'neutral' | 'accent';
+export type BadgeVariant = 'success' | 'warning' | 'error' | 'neutral' | 'accent' | 'info';
 
 @Component({
   selector: 'ui-badge',
@@ -22,6 +22,8 @@ export class BadgeComponent {
         return 'bg-brand-acc-soft text-brand-acc-ink';
       case 'neutral':
         return 'bg-badge-neutral-bg text-badge-neutral-ink';
+      case 'info':
+        return 'bg-badge-info-bg text-badge-info-ink';
     }
   }
 }
