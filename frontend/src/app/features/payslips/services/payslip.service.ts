@@ -24,4 +24,8 @@ export class PayslipService {
   voidAndAdjust(id: string, request: VoidPayslipRequest = {}): Observable<Payslip> {
     return this.http.post<Payslip>(`${this.baseUrl}/${id}/void`, request);
   }
+
+  downloadPdf(id: string): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/${id}/pdf`, { responseType: 'blob' });
+  }
 }
