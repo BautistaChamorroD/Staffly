@@ -8,8 +8,6 @@ function setup(role: string) {
   const routerStub = { navigate: vi.fn() };
   const authServiceStub = {
     getRole: () => role,
-    getCompanyId: () => null,
-    logout: () => {},
   };
 
   TestBed.configureTestingModule({
