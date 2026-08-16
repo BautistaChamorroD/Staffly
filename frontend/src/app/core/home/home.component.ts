@@ -47,6 +47,7 @@ export class HomeComponent implements OnInit {
 
   ngOnInit(): void {
     if (this.role === 'SUPER_ADMIN') {
+      this.loading = false;
       this.router.navigate(['/companies']);
       return;
     }
