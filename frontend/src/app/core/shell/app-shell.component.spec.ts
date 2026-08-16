@@ -1,6 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { Router } from '@angular/router';
-import { RouterTestingModule } from '@angular/router/testing';
+import { provideRouter, Router } from '@angular/router';
 
 import { AuthService } from '../services/auth.service';
 import { AppShellComponent } from './app-shell.component';
@@ -10,10 +9,11 @@ function setup(role: string) {
   const authServiceStub = { getRole: vi.fn().mockReturnValue(role), logout: vi.fn() };
 
   TestBed.configureTestingModule({
-    imports: [AppShellComponent, RouterTestingModule],
+    imports: [AppShellComponent],
     providers: [
       { provide: AuthService, useValue: authServiceStub },
       { provide: Router, useValue: routerStub },
+      provideRouter([]),
     ],
   });
 

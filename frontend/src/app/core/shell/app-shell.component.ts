@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, HostListener, inject } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
 import { Rol } from '../models/rol';
@@ -79,13 +79,8 @@ export class AppShellComponent {
 
   drawerOpen = false;
 
-  get role(): Rol | null {
-    return this.authService.getRole();
-  }
-
-  get navItems(): NavItem[] {
-    return this.role ? (NAV_ITEMS[this.role] ?? []) : [];
-  }
+  readonly role: Rol | null = this.authService.getRole();
+  readonly navItems: NavItem[] = this.role ? (NAV_ITEMS[this.role] ?? []) : [];
 
   toggleDrawer(): void {
     this.drawerOpen = !this.drawerOpen;
@@ -93,6 +88,11 @@ export class AppShellComponent {
 
   closeDrawer(): void {
     this.drawerOpen = false;
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    this.closeDrawer();
   }
 
   logout(): void {

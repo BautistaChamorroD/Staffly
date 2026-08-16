@@ -10,6 +10,8 @@ export const routes: Routes = [
     loadComponent: () => import('./core/login/login.component').then((m) => m.LoginComponent),
   },
   {
+    // Solo authGuard, sin forcePasswordChangeGuard: es el destino del
+    // redirect forzado, no puede redirigirse a sí misma.
     path: 'change-password',
     canActivate: [authGuard],
     loadComponent: () =>
