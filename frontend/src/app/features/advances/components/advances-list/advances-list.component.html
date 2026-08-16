@@ -28,7 +28,10 @@
   @if (loading) {
     <p class="text-sm text-brand-muted">Cargando adelantos...</p>
   } @else if (loadError) {
-    <p class="rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ loadError }}</p>
+    <div class="space-y-2">
+      <p class="rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ loadError }}</p>
+      <button ui-button type="button" variant="secondary" size="sm" (click)="reload()">Reintentar</button>
+    </div>
   } @else if (!canManage) {
     <p class="text-sm text-brand-muted">Los adelantos son gestionados por RRHH. Consultá con tu encargado para ver el detalle de tus adelantos.</p>
   } @else if (filteredAdvances.length === 0) {

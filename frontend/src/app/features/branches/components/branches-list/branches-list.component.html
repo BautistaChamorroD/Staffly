@@ -9,7 +9,10 @@
   @if (loading) {
     <p class="text-sm text-brand-muted">Cargando sucursales...</p>
   } @else if (loadError) {
-    <p class="rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ loadError }}</p>
+    <div class="space-y-2">
+      <p class="rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ loadError }}</p>
+      <button ui-button type="button" variant="secondary" size="sm" (click)="loadBranches()">Reintentar</button>
+    </div>
   } @else if (branches.length === 0) {
     <p class="text-sm text-brand-muted">Todavía no hay sucursales cargadas.</p>
   } @else {

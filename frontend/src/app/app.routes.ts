@@ -149,10 +149,20 @@ export const routes: Routes = [
             (m) => m.AuditLogComponent,
           ),
       },
+      {
+        path: 'forbidden',
+        loadComponent: () =>
+          import('./core/forbidden/forbidden.component').then(
+            (m) => m.ForbiddenComponent,
+          ),
+      },
     ],
   },
   {
     path: '**',
-    redirectTo: '',
+    loadComponent: () =>
+      import('./core/not-found/not-found.component').then(
+        (m) => m.NotFoundComponent,
+      ),
   },
 ];

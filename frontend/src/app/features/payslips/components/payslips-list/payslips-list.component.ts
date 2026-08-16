@@ -98,6 +98,12 @@ export class PayslipsListComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    this.reload();
+  }
+
+  reload(): void {
+    this.loading = true;
+    this.loadError = null;
     if (this.canManage) {
       forkJoin({
         payslips: this.payslipService.list(),

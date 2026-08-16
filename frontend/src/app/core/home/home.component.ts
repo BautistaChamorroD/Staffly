@@ -9,6 +9,7 @@ import { AdvanceService } from '../../features/advances/services/advance.service
 import { LeaveRequestService } from '../../features/leaves/services/leave-request.service';
 import { Schedule } from '../../features/schedules/models/schedule';
 import { ScheduleService } from '../../features/schedules/services/schedule.service';
+import { ButtonDirective } from '../../shared/components/button/button.directive';
 import { CardComponent } from '../../shared/components/card/card.component';
 import { Rol } from '../models/rol';
 import { AuthService } from '../services/auth.service';
@@ -16,7 +17,7 @@ import { AuthService } from '../services/auth.service';
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [RouterLink, CardComponent, DatePipe],
+  imports: [RouterLink, CardComponent, DatePipe, ButtonDirective],
   templateUrl: './home.component.html',
 })
 export class HomeComponent implements OnInit {
@@ -44,6 +45,16 @@ export class HomeComponent implements OnInit {
     { label: 'Licencias', route: '/leaves' },
     { label: 'Mis recibos', route: '/payslips' },
   ];
+
+  reload(): void {
+    this.loading = true;
+    this.loadError = false;
+    if (this.role === 'EMPLOYEE') {
+      this.loadEmployeeData();
+    } else {
+      this.loadManagementData();
+    }
+  }
 
   ngOnInit(): void {
     if (this.role === 'SUPER_ADMIN') {

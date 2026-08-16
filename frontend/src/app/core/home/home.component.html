@@ -3,8 +3,9 @@
     <p class="text-brand-muted text-sm">Cargando...</p>
   </div>
 } @else if (loadError) {
-  <div class="mx-auto max-w-2xl px-4 py-16 text-center">
-    <p class="text-red-600 text-sm">No se pudo cargar el panel. Intentá de nuevo más tarde.</p>
+  <div class="mx-auto max-w-2xl px-4 py-16 text-center space-y-3">
+    <p class="text-sm text-red-600">No se pudo cargar el panel. Intentá de nuevo más tarde.</p>
+    <button ui-button type="button" variant="secondary" size="sm" (click)="reload()">Reintentar</button>
   </div>
 } @else if (role === 'EMPLOYEE') {
   <main class="mx-auto max-w-4xl px-4 py-8 space-y-8">

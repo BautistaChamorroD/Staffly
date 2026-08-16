@@ -29,7 +29,10 @@
   </div>
 
   @if (loadError) {
-    <p class="mb-2 rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ loadError }}</p>
+    <div class="space-y-2 p-4">
+      <p class="rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ loadError }}</p>
+      <button ui-button type="button" variant="secondary" size="sm" (click)="loadSchedules()">Reintentar</button>
+    </div>
   }
 
   @if (role !== 'EMPLOYEE' && !selectedBranchId) {
@@ -59,6 +62,10 @@
       <div class="flex-1 overflow-auto bg-brand-card">
         @if (loading) {
           <p class="p-4 text-sm text-brand-muted">Cargando turnos...</p>
+        } @else if (!loadError && schedules.length === 0) {
+          <div class="flex items-center justify-center py-16 text-center">
+            <p class="text-sm text-brand-muted">No hay turnos para esta semana.</p>
+          </div>
         } @else {
           <div
             class="grid"
