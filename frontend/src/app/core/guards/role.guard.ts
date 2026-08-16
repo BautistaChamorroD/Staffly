@@ -18,6 +18,6 @@ export function roleGuard(rolesPermitidos: Rol[]): CanActivateFn {
     }
 
     const rol = authService.getRole();
-    return rol !== null && rolesPermitidos.includes(rol) ? true : router.createUrlTree(['/']);
+    return rol !== null && rolesPermitidos.includes(rol) ? true : router.createUrlTree(['/forbidden']);
   };
 }
