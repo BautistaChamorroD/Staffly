@@ -62,7 +62,7 @@
       <div class="flex-1 overflow-auto bg-brand-card">
         @if (loading) {
           <p class="p-4 text-sm text-brand-muted">Cargando turnos...</p>
-        } @else if (schedules.length === 0) {
+        } @else if (!loadError && schedules.length === 0) {
           <div class="flex items-center justify-center py-16 text-center">
             <p class="text-sm text-brand-muted">No hay turnos para esta semana.</p>
           </div>
