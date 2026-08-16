@@ -1,6 +1,10 @@
+import { registerLocaleData } from '@angular/common';
+import localeEsAR from '@angular/common/locales/es-AR';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
+
+registerLocaleData(localeEsAR);
 
 import { AuthService } from '../services/auth.service';
 import { AdvanceService } from '../../features/advances/services/advance.service';
@@ -103,6 +107,52 @@ describe('HomeComponent', () => {
   it('error HTTP: setea loadError y apaga loading', () => {
     const { leaveServiceStub } = setup('ADMIN');
     leaveServiceStub.list.mockReturnValue(throwError(() => new Error('network')));
+    const fixture = TestBed.createComponent(HomeComponent);
+    fixture.detectChanges();
+    const comp = fixture.componentInstance;
+    expect(comp.loadError).toBe(true);
+    expect(comp.loading).toBe(false);
+  });
+
+  it('EMPLOYEE carga turnos y licencias propias en paralelo', () => {
+    const { scheduleServiceStub, leaveServiceStub, advanceServiceStub } = setup('EMPLOYEE');
+    const fixture = TestBed.createComponent(HomeComponent);
+    fixture.detectChanges();
+    expect(scheduleServiceStub.list).toHaveBeenCalledWith(
+      expect.objectContaining({ desde: expect.any(String), hasta: expect.any(String) })
+    );
+    expect(leaveServiceStub.list).toHaveBeenCalledWith({ estado: 'PENDIENTE' });
+    expect(advanceServiceStub.list).not.toHaveBeenCalled();
+  });
+
+  it('EMPLOYEE: upcomingShifts se limita a 3 turnos', () => {
+    const { scheduleServiceStub } = setup('EMPLOYEE');
+    scheduleServiceStub.list.mockReturnValue(
+      of([
+        { id: 's1', fechaHoraInicio: '2026-08-17T08:00:00', fechaHoraFin: '2026-08-17T16:00:00', horasTotales: 8 },
+        { id: 's2', fechaHoraInicio: '2026-08-18T08:00:00', fechaHoraFin: '2026-08-18T16:00:00', horasTotales: 8 },
+        { id: 's3', fechaHoraInicio: '2026-08-19T08:00:00', fechaHoraFin: '2026-08-19T16:00:00', horasTotales: 8 },
+        { id: 's4', fechaHoraInicio: '2026-08-20T08:00:00', fechaHoraFin: '2026-08-20T16:00:00', horasTotales: 8 },
+      ])
+    );
+    const fixture = TestBed.createComponent(HomeComponent);
+    fixture.detectChanges();
+    expect(fixture.componentInstance.upcomingShifts).toHaveLength(3);
+  });
+
+  it('EMPLOYEE: pendingOwnLeavesCount refleja las licencias pendientes propias', () => {
+    const { leaveServiceStub } = setup('EMPLOYEE');
+    leaveServiceStub.list.mockReturnValue(
+      of([{ id: 'l1', estado: 'PENDIENTE' }, { id: 'l2', estado: 'PENDIENTE' }])
+    );
+    const fixture = TestBed.createComponent(HomeComponent);
+    fixture.detectChanges();
+    expect(fixture.componentInstance.pendingOwnLeavesCount).toBe(2);
+  });
+
+  it('EMPLOYEE error HTTP: setea loadError y apaga loading', () => {
+    const { scheduleServiceStub } = setup('EMPLOYEE');
+    scheduleServiceStub.list.mockReturnValue(throwError(() => new Error('network')));
     const fixture = TestBed.createComponent(HomeComponent);
     fixture.detectChanges();
     const comp = fixture.componentInstance;
