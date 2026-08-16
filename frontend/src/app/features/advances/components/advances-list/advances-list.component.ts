@@ -122,27 +122,7 @@ export class AdvancesListComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    if (this.canManage) {
-      forkJoin({
-        advances: this.advanceService.list(),
-        employees: this.employeeService.list(),
-        periods: this.periodService.list(),
-      }).subscribe({
-        next: ({ advances, employees, periods }) => {
-          this.advances = advances;
-          this.employees = employees;
-          this.periods = periods;
-          this.loading = false;
-        },
-        error: () => {
-          this.loading = false;
-          this.loadError = 'No se pudo cargar la información. Intentá de nuevo.';
-        },
-      });
-    } else {
-      // GET /advances is restricted to ADMIN/RRHH per API contract
-      this.loading = false;
-    }
+    this.reload();
 
     this.createForm.get('periodId')!.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -153,6 +133,31 @@ export class AdvancesListComponent implements OnInit {
           this.createForm.patchValue({ fecha: period.fechaInicio }, { emitEvent: false });
         }
       });
+  }
+
+  reload(): void {
+    if (!this.canManage) {
+      this.loading = false;
+      return;
+    }
+    this.loading = true;
+    this.loadError = null;
+    forkJoin({
+      advances: this.advanceService.list(),
+      employees: this.employeeService.list(),
+      periods: this.periodService.list(),
+    }).subscribe({
+      next: ({ advances, employees, periods }) => {
+        this.advances = advances;
+        this.employees = employees;
+        this.periods = periods;
+        this.loading = false;
+      },
+      error: () => {
+        this.loading = false;
+        this.loadError = 'No se pudo cargar la información. Intentá de nuevo.';
+      },
+    });
   }
 
   badgeVariant(estado: EstadoAdelanto): BadgeVariant {

@@ -53,7 +53,10 @@
   @if (loading) {
     <p class="text-sm text-brand-muted">Cargando solicitudes...</p>
   } @else if (loadError) {
-    <p class="rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ loadError }}</p>
+    <div class="space-y-2">
+      <p class="rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ loadError }}</p>
+      <button ui-button type="button" variant="secondary" size="sm" (click)="reload()">Reintentar</button>
+    </div>
   } @else if (filteredRequests.length === 0) {
     <p class="text-sm text-brand-muted">No hay solicitudes para mostrar.</p>
   } @else {

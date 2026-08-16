@@ -142,6 +142,12 @@ export class LeavesListComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    this.reload();
+  }
+
+  reload(): void {
+    this.loading = true;
+    this.loadError = null;
     if (this.canManage) {
       forkJoin({
         requests: this.leaveRequestService.list(),

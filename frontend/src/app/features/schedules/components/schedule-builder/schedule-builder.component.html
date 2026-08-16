@@ -29,7 +29,10 @@
   </div>
 
   @if (loadError) {
-    <p class="mb-2 rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ loadError }}</p>
+    <div class="space-y-2 p-4">
+      <p class="rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ loadError }}</p>
+      <button ui-button type="button" variant="secondary" size="sm" (click)="loadSchedules()">Reintentar</button>
+    </div>
   }
 
   @if (role !== 'EMPLOYEE' && !selectedBranchId) {
