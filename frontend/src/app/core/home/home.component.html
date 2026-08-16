@@ -1,4 +1,109 @@
-<main class="mx-auto max-w-2xl px-4 py-16 text-center">
-  <h1 class="font-heading mb-3 text-2xl font-bold text-brand-ink">Bienvenido a Staffly</h1>
-  <p class="text-brand-muted">Usá el menú lateral para navegar a tus secciones.</p>
-</main>
+@if (loading) {
+  <div class="flex items-center justify-center py-32">
+    <p class="text-brand-muted text-sm">Cargando...</p>
+  </div>
+} @else if (loadError) {
+  <div class="mx-auto max-w-2xl px-4 py-16 text-center">
+    <p class="text-red-600 text-sm">No se pudo cargar el panel. Intentá de nuevo más tarde.</p>
+  </div>
+} @else if (role === 'EMPLOYEE') {
+  <main class="mx-auto max-w-4xl px-4 py-8 space-y-8">
+    <h1 class="font-heading text-2xl font-bold text-brand-ink">Bienvenido a Staffly</h1>
+
+    <section class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <ui-card>
+        <p class="text-sm text-brand-muted">Próximos turnos</p>
+        <p class="mt-1 text-3xl font-bold text-brand-ink">{{ upcomingShifts.length }}</p>
+      </ui-card>
+      <ui-card>
+        <p class="text-sm text-brand-muted">Mis licencias pendientes</p>
+        <p class="mt-1 text-3xl font-bold text-brand-ink">{{ pendingOwnLeavesCount }}</p>
+      </ui-card>
+    </section>
+
+    @if (upcomingShifts.length > 0) {
+      <section>
+        <h2 class="font-heading text-lg font-semibold text-brand-ink mb-3">Próximos turnos (7 días)</h2>
+        <div class="space-y-2">
+          @for (shift of upcomingShifts; track shift.id) {
+            <div class="flex items-center justify-between rounded-lg border border-brand-line bg-brand-card px-4 py-3">
+              <span class="text-sm text-brand-ink">{{ shift.fechaHoraInicio | date: 'EEE dd/MM, HH:mm' : '' : 'es-AR' }}</span>
+              <span class="text-sm text-brand-muted">{{ shift.horasTotales }}h</span>
+            </div>
+          }
+        </div>
+      </section>
+    }
+
+    <section>
+      <h2 class="font-heading text-lg font-semibold text-brand-ink mb-3">Acceso rápido</h2>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        @for (link of employeeLinks; track link.route) {
+          <a
+            [routerLink]="link.route"
+            class="rounded-xl border border-brand-line bg-brand-card p-4 text-center text-sm font-medium text-brand-ink hover:border-brand-acc transition-colors"
+          >
+            {{ link.label }}
+          </a>
+        }
+      </div>
+    </section>
+  </main>
+} @else {
+  <main class="mx-auto max-w-4xl px-4 py-8 space-y-8">
+    <h1 class="font-heading text-2xl font-bold text-brand-ink">Panel de gestión</h1>
+
+    <section class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <a routerLink="/leaves" class="block">
+        <ui-card>
+          <p class="text-sm text-brand-muted">Licencias pendientes</p>
+          <p class="mt-1 text-3xl font-bold text-brand-ink">{{ pendingLeavesCount }}</p>
+          <p class="mt-2 text-xs text-brand-acc">Ver solicitudes →</p>
+        </ui-card>
+      </a>
+      @if (role === 'ADMIN' || role === 'RRHH') {
+        <a routerLink="/advances" class="block">
+          <ui-card>
+            <p class="text-sm text-brand-muted">Adelantos pendientes</p>
+            <p class="mt-1 text-3xl font-bold text-brand-ink">{{ pendingAdvancesCount }}</p>
+            <p class="mt-2 text-xs text-brand-acc">Ver adelantos →</p>
+          </ui-card>
+        </a>
+      }
+    </section>
+
+    <section>
+      <h2 class="font-heading text-lg font-semibold text-brand-ink mb-3">Acceso rápido</h2>
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        @if (role === 'ADMIN' || role === 'RRHH') {
+          <a
+            routerLink="/employees"
+            class="rounded-xl border border-brand-line bg-brand-card p-4 text-center text-sm font-medium text-brand-ink hover:border-brand-acc transition-colors"
+          >
+            Empleados
+          </a>
+        }
+        <a
+          routerLink="/schedules"
+          class="rounded-xl border border-brand-line bg-brand-card p-4 text-center text-sm font-medium text-brand-ink hover:border-brand-acc transition-colors"
+        >
+          Turnos
+        </a>
+        <a
+          routerLink="/leaves"
+          class="rounded-xl border border-brand-line bg-brand-card p-4 text-center text-sm font-medium text-brand-ink hover:border-brand-acc transition-colors"
+        >
+          Licencias
+        </a>
+        @if (role === 'ADMIN' || role === 'RRHH') {
+          <a
+            routerLink="/advances"
+            class="rounded-xl border border-brand-line bg-brand-card p-4 text-center text-sm font-medium text-brand-ink hover:border-brand-acc transition-colors"
+          >
+            Adelantos
+          </a>
+        }
+      </div>
+    </section>
+  </main>
+}
