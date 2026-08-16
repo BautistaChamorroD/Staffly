@@ -316,7 +316,9 @@ export class LeavesListComponent implements OnInit {
 
   canCancel(req: LeaveRequest): boolean {
     if (this.role === 'SUPERVISOR') return false;
-    return req.estado === 'PENDIENTE' || req.estado === 'APROBADA';
+    if (req.estado !== 'PENDIENTE' && req.estado !== 'APROBADA') return false;
+    const today = new Date().toISOString().split('T')[0];
+    return req.fechaInicio > today;
   }
 
   // ── Tipos de licencia (ADMIN) ──────────────────────────────────────────────
