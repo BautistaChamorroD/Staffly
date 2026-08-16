@@ -13,6 +13,7 @@ import { SelectComponent, SelectOption } from '../../../../shared/components/sel
 import { TableComponent } from '../../../../shared/components/table/table.component';
 import { Branch } from '../../../branches/models/branch';
 import { BranchService } from '../../../branches/services/branch.service';
+import { ESTADO_LABORAL_LABELS, ESTADO_LIQUIDACION_LABELS } from '../../../../core/i18n/strings';
 import { CreateEmployeeRequest, Employee, EstadoLaboral, TipoContrato } from '../../models/employee';
 import { EmployeeService } from '../../services/employee.service';
 import { EmployeeFormComponent, EmployeeFormValue } from '../employee-form/employee-form.component';
@@ -46,6 +47,9 @@ export class EmployeesListComponent implements OnInit {
   private router = inject(Router);
   private fb = inject(FormBuilder);
   private destroyRef = inject(DestroyRef);
+
+  protected readonly ESTADO_LABORAL_LABELS = ESTADO_LABORAL_LABELS;
+  protected readonly ESTADO_LIQUIDACION_LABELS = ESTADO_LIQUIDACION_LABELS;
 
   readonly canWrite = this.authService.getRole() === 'ADMIN' || this.authService.getRole() === 'RRHH';
 

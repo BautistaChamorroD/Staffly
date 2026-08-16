@@ -1,5 +1,5 @@
 <main class="mx-auto max-w-3xl px-4 py-8">
-  <h1 class="font-heading mb-6 text-2xl font-bold text-brand-ink">Recibos de sueldo</h1>
+  <h1 class="font-heading mb-6 text-2xl font-bold text-brand-ink" i18n="@@payslips.heading">Recibos de sueldo</h1>
 
   <!-- Filtros (ADMIN / RRHH) -->
   @if (canManage) {
@@ -39,7 +39,7 @@
               }
             </div>
             <div class="flex flex-wrap gap-1.5">
-              <ui-badge [variant]="estadoBadge(p.estado)">{{ p.estado }}</ui-badge>
+              <ui-badge [variant]="estadoBadge(p.estado)">{{ ESTADO_RECIBO_LABELS[p.estado] }}</ui-badge>
               @if (p.tipo === 'AJUSTE') {
                 <ui-badge variant="info">AJUSTE</ui-badge>
               }
@@ -183,7 +183,7 @@
       @if (canManage) {
         de <strong>{{ voidTarget.employeeNombre }} {{ voidTarget.employeeApellido }}</strong>
       }
-      . Se generará automáticamente un nuevo recibo de ajuste en estado GENERADO.
+      . Se generará automáticamente un nuevo recibo de ajuste en estado {{ ESTADO_RECIBO_LABELS['GENERADO'] }}.
     </p>
     <form [formGroup]="voidForm" class="mt-4">
       <ui-input

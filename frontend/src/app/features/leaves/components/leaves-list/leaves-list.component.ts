@@ -10,6 +10,7 @@ import { ModalComponent } from '../../../../shared/components/modal/modal.compon
 import { SelectComponent, SelectOption } from '../../../../shared/components/select/select.component';
 import { Employee } from '../../../employees/models/employee';
 import { EmployeeService } from '../../../employees/services/employee.service';
+import { ESTADO_LICENCIA_LABELS } from '../../../../core/i18n/strings';
 import { CreateLeaveRequestBody, EstadoLicencia, LeaveRequest, LeaveType } from '../../models/leave';
 import { LeaveRequestService } from '../../services/leave-request.service';
 import { LeaveTypeService } from '../../services/leave-type.service';
@@ -34,6 +35,8 @@ export class LeavesListComponent implements OnInit {
   private employeeService = inject(EmployeeService);
   private authService = inject(AuthService);
   private fb = inject(FormBuilder);
+
+  protected readonly ESTADO_LICENCIA_LABELS = ESTADO_LICENCIA_LABELS;
 
   readonly role = this.authService.getRole();
   readonly canManage = this.role === 'ADMIN' || this.role === 'RRHH' || this.role === 'SUPERVISOR';

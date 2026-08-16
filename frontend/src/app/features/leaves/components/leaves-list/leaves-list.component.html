@@ -33,7 +33,7 @@
   }
 
   <div class="mb-6 flex items-center justify-between">
-    <h1 class="font-heading text-2xl font-bold text-brand-ink">Licencias y vacaciones</h1>
+    <h1 class="font-heading text-2xl font-bold text-brand-ink" i18n="@@leaves.heading">Licencias y vacaciones</h1>
     @if (canCreate) {
       <button ui-button type="button" (click)="openCreateModal()">+ Nueva solicitud</button>
     }
@@ -74,7 +74,7 @@
                 <p class="mt-1 text-xs text-brand-muted">{{ req.motivo }}</p>
               }
             </div>
-            <ui-badge [variant]="estadoBadge(req.estado)">{{ req.estado }}</ui-badge>
+            <ui-badge [variant]="estadoBadge(req.estado)">{{ ESTADO_LICENCIA_LABELS[req.estado] }}</ui-badge>
           </header>
 
           <!-- Acciones -->

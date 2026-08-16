@@ -13,6 +13,7 @@ import { Employee } from '../../../employees/models/employee';
 import { EmployeeService } from '../../../employees/services/employee.service';
 import { PayrollPeriod } from '../../../payroll/models/payroll-period';
 import { PayrollPeriodService } from '../../../payroll/services/payroll-period.service';
+import { ESTADO_RECIBO_LABELS } from '../../../../core/i18n/strings';
 import { EstadoRecibo, Payslip } from '../../models/payslip';
 import { PayslipService } from '../../services/payslip.service';
 
@@ -37,6 +38,8 @@ export class PayslipsListComponent implements OnInit {
   private periodService = inject(PayrollPeriodService);
   private authService = inject(AuthService);
   private fb = inject(FormBuilder);
+
+  protected readonly ESTADO_RECIBO_LABELS = ESTADO_RECIBO_LABELS;
 
   readonly role = this.authService.getRole();
   readonly isAdmin = this.role === 'ADMIN';
