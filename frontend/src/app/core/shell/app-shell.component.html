@@ -1,0 +1,88 @@
+<!-- Mobile backdrop — closes drawer on outside click -->
+@if (drawerOpen) {
+  <div
+    class="fixed inset-0 z-20 bg-brand-ink/40 md:hidden"
+    (click)="closeDrawer()"
+    aria-hidden="true"
+  ></div>
+}
+
+<!-- Sidebar — fixed on desktop, slide-in drawer on mobile -->
+<aside
+  class="fixed inset-y-0 left-0 z-30 flex w-64 flex-col border-r border-brand-line bg-brand-card transition-transform duration-200 md:translate-x-0"
+  [class]="{ 'translate-x-0': drawerOpen, '-translate-x-full': !drawerOpen }"
+>
+  <!-- Brand -->
+  <div class="flex h-14 shrink-0 items-center border-b border-brand-line px-5">
+    <span class="font-heading text-xl font-bold tracking-tight text-brand-acc">Staffly</span>
+  </div>
+
+  <!-- Nav links -->
+  <nav class="flex-1 overflow-y-auto py-4" aria-label="Navegación principal">
+    <ul class="space-y-0.5 px-2">
+      @for (item of navItems; track item.route) {
+        <li>
+          <a
+            [routerLink]="item.route"
+            routerLinkActive="!text-brand-acc-ink !font-semibold bg-brand-acc-soft"
+            [routerLinkActiveOptions]="{ exact: false }"
+            class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-brand-muted transition-colors hover:bg-brand-acc-soft hover:text-brand-acc-ink"
+            (click)="closeDrawer()"
+          >
+            <svg
+              class="h-5 w-5 shrink-0"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              aria-hidden="true"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" [attr.d]="item.icon" />
+            </svg>
+            <span>{{ item.label }}</span>
+          </a>
+        </li>
+      }
+    </ul>
+  </nav>
+
+  <!-- Footer: role badge + logout -->
+  <div class="shrink-0 border-t border-brand-line p-4">
+    <p class="mb-3 truncate px-1 text-xs font-medium uppercase tracking-wide text-brand-muted">
+      {{ role }}
+    </p>
+    <button
+      type="button"
+      class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-brand-muted transition-colors hover:bg-badge-error-bg hover:text-badge-error-ink"
+      (click)="logout()"
+    >
+      <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
+      </svg>
+      Cerrar sesión
+    </button>
+  </div>
+</aside>
+
+<!-- Content wrapper — pushes right of sidebar on desktop -->
+<div class="flex min-h-screen flex-col md:pl-64">
+  <!-- Sticky top bar — only shows hamburger on mobile -->
+  <header class="sticky top-0 z-10 flex h-14 shrink-0 items-center border-b border-brand-line bg-brand-card px-4">
+    <button
+      type="button"
+      class="mr-3 rounded-lg p-1.5 text-brand-muted hover:bg-brand-line md:hidden"
+      (click)="toggleDrawer()"
+      aria-label="Abrir menú"
+    >
+      <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+      </svg>
+    </button>
+    <span class="font-heading text-base font-semibold text-brand-ink md:hidden">Staffly</span>
+  </header>
+
+  <!-- Route content -->
+  <div class="flex-1">
+    <router-outlet />
+  </div>
+</div>
