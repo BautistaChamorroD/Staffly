@@ -41,7 +41,7 @@
             <div class="flex flex-wrap gap-1.5">
               <ui-badge [variant]="estadoBadge(p.estado)">{{ ESTADO_RECIBO_LABELS[p.estado] }}</ui-badge>
               @if (p.tipo === 'AJUSTE') {
-                <ui-badge variant="info">AJUSTE</ui-badge>
+                <ui-badge variant="info">{{ TIPO_RECIBO_LABELS['AJUSTE'] }}</ui-badge>
               }
             </div>
           </header>

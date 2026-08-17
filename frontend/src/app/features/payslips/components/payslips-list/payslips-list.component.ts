@@ -13,7 +13,7 @@ import { Employee } from '../../../employees/models/employee';
 import { EmployeeService } from '../../../employees/services/employee.service';
 import { PayrollPeriod } from '../../../payroll/models/payroll-period';
 import { PayrollPeriodService } from '../../../payroll/services/payroll-period.service';
-import { ESTADO_RECIBO_LABELS } from '../../../../core/i18n/strings';
+import { ESTADO_RECIBO_LABELS, TIPO_RECIBO_LABELS } from '../../../../core/i18n/strings';
 import { EstadoRecibo, Payslip } from '../../models/payslip';
 import { PayslipService } from '../../services/payslip.service';
 
@@ -40,6 +40,7 @@ export class PayslipsListComponent implements OnInit {
   private fb = inject(FormBuilder);
 
   protected readonly ESTADO_RECIBO_LABELS = ESTADO_RECIBO_LABELS;
+  protected readonly TIPO_RECIBO_LABELS = TIPO_RECIBO_LABELS;
 
   readonly role = this.authService.getRole();
   readonly isAdmin = this.role === 'ADMIN';
