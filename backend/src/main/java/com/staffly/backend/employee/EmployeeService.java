@@ -201,6 +201,9 @@ public class EmployeeService {
             employee.setEmailContacto(request.emailContacto());
         }
         if (request.branchIds() != null) {
+            if (request.branchIds().isEmpty()) {
+                throw new BadRequestException("El empleado debe tener al menos una sucursal asignada");
+            }
             employee.getBranches().clear();
             employee.getBranches().addAll(resolveBranches(request.branchIds(), principal.getCompanyId()));
         }
