@@ -15,6 +15,7 @@ import { Employee } from '../../../employees/models/employee';
 import { EmployeeService } from '../../../employees/services/employee.service';
 import { PayrollPeriod } from '../../../payroll/models/payroll-period';
 import { PayrollPeriodService } from '../../../payroll/services/payroll-period.service';
+import { ESTADO_ADELANTO_LABELS } from '../../../../core/i18n/strings';
 import { Advance, EstadoAdelanto } from '../../models/advance';
 import { AdvanceService } from '../../services/advance.service';
 
@@ -41,6 +42,8 @@ export class AdvancesListComponent implements OnInit {
   private authService = inject(AuthService);
   private fb = inject(FormBuilder);
   private destroyRef = inject(DestroyRef);
+
+  protected readonly ESTADO_ADELANTO_LABELS = ESTADO_ADELANTO_LABELS;
 
   readonly role = this.authService.getRole();
   readonly canManage = this.role === 'ADMIN' || this.role === 'RRHH';

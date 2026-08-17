@@ -1,6 +1,6 @@
 <main class="mx-auto max-w-6xl px-4 py-8">
   <div class="mb-4 flex items-center justify-between">
-    <h1 class="font-heading text-2xl font-bold text-brand-ink">Empleados</h1>
+    <h1 class="font-heading text-2xl font-bold text-brand-ink" i18n="@@employees.heading">Empleados</h1>
     @if (canWrite) {
       <button ui-button type="button" (click)="openCreateModal()">+ Nuevo empleado</button>
     }
@@ -54,11 +54,11 @@
             <td class="px-3 py-2">{{ branchNames(employee) || '—' }}</td>
             <td class="px-3 py-2">{{ employee.categoria }}</td>
             <td class="px-3 py-2">
-              <ui-badge [variant]="estadoLaboralVariant(employee.estadoLaboral)">{{ employee.estadoLaboral }}</ui-badge>
+              <ui-badge [variant]="estadoLaboralVariant(employee.estadoLaboral)">{{ ESTADO_LABORAL_LABELS[employee.estadoLaboral] }}</ui-badge>
             </td>
             <td class="px-3 py-2">
               <ui-badge [variant]="employee.estadoLiquidacion === 'AL_DIA' ? 'success' : 'warning'">
-                {{ employee.estadoLiquidacion }}
+                {{ ESTADO_LIQUIDACION_LABELS[employee.estadoLiquidacion] }}
               </ui-badge>
             </td>
             <td class="px-3 py-2 text-right">
