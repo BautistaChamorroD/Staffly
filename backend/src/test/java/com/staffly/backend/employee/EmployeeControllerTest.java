@@ -336,6 +336,24 @@ class EmployeeControllerTest {
     }
 
     @Test
+    void updateWithEmptyBranchIdsReturns400() throws Exception {
+        UUID branchId = createBranch(companyAId, "Sucursal Centro");
+        String createResponse = mockMvc.perform(post("/api/v1/employees")
+                        .header("Authorization", "Bearer " + companyAToken)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(baseEmployeeFields(branchId))))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String employeeId = objectMapper.readTree(createResponse).get("id").asText();
+
+        mockMvc.perform(patch("/api/v1/employees/" + employeeId)
+                        .header("Authorization", "Bearer " + companyAToken)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(Map.of("branchIds", List.of()))))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void listFiltersByEstadoLaboralBranchAndSearch() throws Exception {
         UUID branchId = createBranch(companyAId, "Sucursal Centro");
         mockMvc.perform(post("/api/v1/employees")
