@@ -78,6 +78,25 @@ class AdvanceControllerTest {
     }
 
     @Test
+    void creatingAdvanceMarksEmployeeAsPendiente() throws Exception {
+        mockMvc.perform(get("/api/v1/employees/" + empA1.getId())
+                        .header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estadoLiquidacion").value("AL_DIA"));
+
+        mockMvc.perform(post(BASE_URL)
+                        .header("Authorization", "Bearer " + adminAToken)
+                        .contentType("application/json")
+                        .content(buildCreateBody(empA1.getId(), "2026-08-01", "1500.00", "Pago anticipado")))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/v1/employees/" + empA1.getId())
+                        .header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estadoLiquidacion").value("PENDIENTE"));
+    }
+
+    @Test
     void rrhhCanCreateAdvance() throws Exception {
         mockMvc.perform(post(BASE_URL)
                         .header("Authorization", "Bearer " + rrhhAToken)

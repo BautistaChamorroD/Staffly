@@ -7,6 +7,7 @@ import com.staffly.backend.common.ConflictException;
 import com.staffly.backend.common.ResourceNotFoundException;
 import com.staffly.backend.employee.Employee;
 import com.staffly.backend.employee.EmployeeRepository;
+import com.staffly.backend.employee.EstadoLiquidacion;
 import com.staffly.backend.security.Rol;
 import com.staffly.backend.security.StafflyUserPrincipal;
 import com.staffly.backend.user.UserRepository;
@@ -63,6 +64,7 @@ public class AdvanceService {
     public AdvanceResponse create(CreateAdvanceRequest request, StafflyUserPrincipal principal) {
         UUID companyId = principal.getCompanyId();
         Employee employee = resolveEmployee(request.employeeId(), principal);
+        employee.setEstadoLiquidacion(EstadoLiquidacion.PENDIENTE);
 
         Advance advance = new Advance();
         advance.setCompanyId(companyId);
