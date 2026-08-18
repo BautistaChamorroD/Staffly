@@ -42,18 +42,21 @@ public class EmployeeService {
     private final UserRepository userRepository;
     private final AuditLogRepository auditLogRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final EmployeeResolver employeeResolver;
 
     public EmployeeService(
             EmployeeRepository employeeRepository,
             BranchRepository branchRepository,
             UserRepository userRepository,
             AuditLogRepository auditLogRepository,
-            ApplicationEventPublisher eventPublisher) {
+            ApplicationEventPublisher eventPublisher,
+            EmployeeResolver employeeResolver) {
         this.employeeRepository = employeeRepository;
         this.branchRepository = branchRepository;
         this.userRepository = userRepository;
         this.auditLogRepository = auditLogRepository;
         this.eventPublisher = eventPublisher;
+        this.employeeResolver = employeeResolver;
     }
 
     @Transactional(readOnly = true)
@@ -262,22 +265,6 @@ public class EmployeeService {
     }
 
     private Employee findEmployeeOrThrow(UUID id, StafflyUserPrincipal principal) {
-        Employee employee = employeeRepository.findByIdAndCompanyId(id, principal.getCompanyId())
-                .orElseThrow(() -> new ResourceNotFoundException("No se encontró el empleado solicitado"));
-        if (!isInScope(employee, principal)) {
-            throw new ResourceNotFoundException("No se encontró el empleado solicitado");
-        }
-        return employee;
-    }
-
-    /**
-     * ADMIN/RRHH ven cualquier empleado de la empresa. SUPERVISOR solo los
-     * que tienen alguna sucursal en principal.getBranchIds() (viene del JWT).
-     */
-    private boolean isInScope(Employee employee, StafflyUserPrincipal principal) {
-        if (principal.getRol() != Rol.SUPERVISOR) {
-            return true;
-        }
-        return employee.getBranches().stream().anyMatch(b -> principal.getBranchIds().contains(b.getId()));
+        return employeeResolver.resolveForCaller(id, principal, false);
     }
 }
