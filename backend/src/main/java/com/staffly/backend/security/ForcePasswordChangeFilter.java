@@ -31,7 +31,9 @@ public class ForcePasswordChangeFilter extends OncePerRequestFilter {
 
     private static final Set<String> ALLOWED_PATHS = Set.of(
             "/api/v1/auth/change-password",
-            "/api/v1/auth/logout");
+            "/api/v1/auth/logout",
+            "/api/v1/auth/login",
+            "/api/v1/auth/refresh");
 
     private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
@@ -51,13 +53,16 @@ public class ForcePasswordChangeFilter extends OncePerRequestFilter {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
             if (authentication != null && authentication.getPrincipal() instanceof StafflyUserPrincipal principal
                     && principal.getRol() != Rol.SUPER_ADMIN
+                    // findById a propósito (self-lookup del propio JWT, no un id del
+                    // cliente): findByIdAndCompanyId fallaría ABIERTO (.orElse(false))
+                    // si el token diverge de la fila; el bare findById falla cerrado.
                     && userRepository.findById(principal.getUserId())
                             .map(User::isDebeCambiarPassword)
                             .orElse(false)) {
 
                 response.setStatus(HttpStatus.FORBIDDEN.value());
                 response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-                objectMapper.writeValue(response.getWriter(),
+                objectMapper.writeValue(response.getOutputStream(),
                         ApiError.of("PASSWORD_CHANGE_REQUIRED", "Debe cambiar su contraseña antes de continuar"));
                 return;
             }
