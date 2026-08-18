@@ -12,6 +12,8 @@ import { Branch } from '../../../branches/models/branch';
 import { BranchService } from '../../../branches/services/branch.service';
 import { Employee } from '../../../employees/models/employee';
 import { EmployeeService } from '../../../employees/services/employee.service';
+import { LeaveRequest } from '../../../leaves/models/leave';
+import { LeaveRequestService } from '../../../leaves/services/leave-request.service';
 import { CreateScheduleRequest, Schedule, TipoTurno } from '../../models/schedule';
 import { ScheduleService } from '../../services/schedule.service';
 
@@ -55,6 +57,7 @@ export class ScheduleBuilderComponent implements OnInit {
   private scheduleService = inject(ScheduleService);
   private employeeService = inject(EmployeeService);
   private branchService = inject(BranchService);
+  private leaveRequestService = inject(LeaveRequestService);
   private authService = inject(AuthService);
   private fb = inject(FormBuilder);
   private destroyRef = inject(DestroyRef);
@@ -71,6 +74,7 @@ export class ScheduleBuilderComponent implements OnInit {
   branches: Branch[] = [];
   employees: Employee[] = [];
   schedules: Schedule[] = [];
+  approvedLeaves: LeaveRequest[] = [];
 
   myEmployeeId: string | null = null;
 
@@ -194,6 +198,10 @@ export class ScheduleBuilderComponent implements OnInit {
         next: (schedules) => { this.schedules = schedules; this.loading = false; },
         error: () => { this.loading = false; this.loadError = 'No se pudieron cargar tus turnos.'; },
       });
+      this.leaveRequestService.list({ employeeId: this.myEmployeeId, estado: 'APROBADA' }).subscribe({
+        next: (leaves) => { this.approvedLeaves = leaves; },
+        error: () => {},
+      });
       return;
     }
 
@@ -203,6 +211,19 @@ export class ScheduleBuilderComponent implements OnInit {
     this.scheduleService.list({ branchId: this.selectedBranchId, desde, hasta }).subscribe({
       next: (schedules) => { this.schedules = schedules; this.loading = false; },
       error: () => { this.loading = false; this.loadError = 'No se pudieron cargar los turnos.'; },
+    });
+    this.leaveRequestService.list({ estado: 'APROBADA' }).subscribe({
+      next: (leaves) => { this.approvedLeaves = leaves; },
+      error: () => {},
+    });
+  }
+
+  /** Licencias aprobadas cuyo rango de días toca el día dado (bloque visual, no clickeable). */
+  leavesForDay(day: Date): LeaveRequest[] {
+    return this.approvedLeaves.filter((lr) => {
+      const inicio = new Date(`${lr.fechaInicio}T00:00:00`);
+      const fin = new Date(`${lr.fechaFin}T00:00:00`);
+      return day >= inicio && day <= fin;
     });
   }
 

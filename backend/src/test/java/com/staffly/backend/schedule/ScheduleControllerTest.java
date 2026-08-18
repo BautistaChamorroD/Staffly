@@ -15,6 +15,9 @@ import com.staffly.backend.employee.Employee;
 import com.staffly.backend.employee.EstadoLaboral;
 import com.staffly.backend.employee.EstadoLiquidacion;
 import com.staffly.backend.employee.TipoContrato;
+import com.staffly.backend.leave.EstadoLicencia;
+import com.staffly.backend.leave.LeaveRequest;
+import com.staffly.backend.leave.LeaveType;
 import com.staffly.backend.user.EstadoUsuario;
 import com.staffly.backend.user.RolUsuario;
 import com.staffly.backend.user.User;
@@ -189,6 +192,26 @@ class ScheduleControllerTest {
         em.flush();
     }
 
+    private LeaveRequest createLeaveRequest(UUID companyId, Employee emp, LocalDate desde, LocalDate hasta,
+                                             EstadoLicencia estado) {
+        LeaveType lt = new LeaveType();
+        lt.setCompanyId(companyId);
+        lt.setNombre("Vacaciones");
+        lt.setEsPaga(true);
+        em.persist(lt);
+
+        LeaveRequest lr = new LeaveRequest();
+        lr.setCompanyId(companyId);
+        lr.setEmployee(emp);
+        lr.setLeaveType(lt);
+        lr.setFechaInicio(desde);
+        lr.setFechaFin(hasta);
+        lr.setEstado(estado);
+        em.persist(lr);
+        em.flush();
+        return lr;
+    }
+
     // ── tests ─────────────────────────────────────────────────────────────────
 
     @Test
@@ -338,6 +361,61 @@ class ScheduleControllerTest {
                         .contentType("application/json").content(body))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.warning").value("OUT_OF_AVAILABILITY"));
+    }
+
+    // ── AUD-07 (issue #136): bloquear turno sobre licencia aprobada ────────────
+
+    @Test
+    void createBloqueadoPorLicenciaAprobadaSolapada() throws Exception {
+        createLeaveRequest(companyAId, emp1, LocalDate.of(2026, 7, 6), LocalDate.of(2026, 7, 10),
+                EstadoLicencia.APROBADA);
+
+        String body = objectMapper.writeValueAsString(Map.of(
+                "employeeId", emp1.getId().toString(),
+                "branchId", branch1.getId().toString(),
+                "fechaHoraInicio", "2026-07-06T09:00:00",
+                "fechaHoraFin", "2026-07-06T17:00:00",
+                "tipoTurno", "FIJO"));
+        mockMvc.perform(post(BASE_URL)
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType("application/json").content(body))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void createPermitidoConLicenciaPendiente() throws Exception {
+        // licencia PENDIENTE (no aprobada) no debe bloquear la asignación del turno
+        createLeaveRequest(companyAId, emp1, LocalDate.of(2026, 7, 6), LocalDate.of(2026, 7, 10),
+                EstadoLicencia.PENDIENTE);
+
+        postSchedule(adminToken, emp1.getId(), branch1.getId(),
+                "2026-07-06T09:00:00", "2026-07-06T17:00:00", "FIJO");
+    }
+
+    @Test
+    void createPermitidoFueraDelRangoDeLicencia() throws Exception {
+        createLeaveRequest(companyAId, emp1, LocalDate.of(2026, 7, 6), LocalDate.of(2026, 7, 10),
+                EstadoLicencia.APROBADA);
+
+        postSchedule(adminToken, emp1.getId(), branch1.getId(),
+                "2026-07-11T09:00:00", "2026-07-11T17:00:00", "FIJO");
+    }
+
+    @Test
+    void updateBloqueadoPorLicenciaAprobadaSolapada() throws Exception {
+        UUID id = postSchedule(adminToken, emp1.getId(), branch1.getId(),
+                "2026-07-01T09:00:00", "2026-07-01T17:00:00", "FIJO");
+
+        createLeaveRequest(companyAId, emp1, LocalDate.of(2026, 7, 6), LocalDate.of(2026, 7, 10),
+                EstadoLicencia.APROBADA);
+
+        mockMvc.perform(patch(BASE_URL + "/" + id)
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "fechaHoraInicio", "2026-07-06T09:00:00",
+                                "fechaHoraFin", "2026-07-06T17:00:00"))))
+                .andExpect(status().isConflict());
     }
 
     @Test

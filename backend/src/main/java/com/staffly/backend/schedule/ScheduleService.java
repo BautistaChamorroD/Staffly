@@ -13,6 +13,7 @@ import com.staffly.backend.common.ScheduleOverlapBatchException;
 import com.staffly.backend.common.audit.AuditableFieldChangedEvent;
 import com.staffly.backend.employee.Employee;
 import com.staffly.backend.employee.EmployeeResolver;
+import com.staffly.backend.leave.LeaveRequestRepository;
 import com.staffly.backend.schedule.dto.CreateScheduleRequest;
 import com.staffly.backend.schedule.dto.DuplicateWeeklyRequest;
 import com.staffly.backend.schedule.dto.DuplicateWeeklyResponse;
@@ -47,19 +48,22 @@ public class ScheduleService {
     private final AvailabilityRepository availabilityRepository;
     private final UserRepository userRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final LeaveRequestRepository leaveRequestRepository;
 
     public ScheduleService(ScheduleRepository scheduleRepository,
                            EmployeeResolver employeeResolver,
                            BranchRepository branchRepository,
                            AvailabilityRepository availabilityRepository,
                            UserRepository userRepository,
-                           ApplicationEventPublisher eventPublisher) {
+                           ApplicationEventPublisher eventPublisher,
+                           LeaveRequestRepository leaveRequestRepository) {
         this.scheduleRepository = scheduleRepository;
         this.employeeResolver = employeeResolver;
         this.branchRepository = branchRepository;
         this.availabilityRepository = availabilityRepository;
         this.userRepository = userRepository;
         this.eventPublisher = eventPublisher;
+        this.leaveRequestRepository = leaveRequestRepository;
     }
 
     @Transactional(readOnly = true)
@@ -101,6 +105,8 @@ public class ScheduleService {
                 request.fechaHoraInicio(), request.fechaHoraFin(), null)) {
             throw new ConflictException("El empleado ya tiene un turno en ese horario");
         }
+        checkSinLicenciaAprobada(principal.getCompanyId(), employee.getId(),
+                request.fechaHoraInicio(), request.fechaHoraFin());
 
         Schedule schedule = new Schedule();
         schedule.setCompanyId(principal.getCompanyId());
@@ -165,6 +171,7 @@ public class ScheduleService {
                 inicioFinal, finFinal, schedule.getId())) {
             throw new ConflictException("El empleado ya tiene un turno en ese horario");
         }
+        checkSinLicenciaAprobada(principal.getCompanyId(), schedule.getEmployee().getId(), inicioFinal, finFinal);
 
         schedule.setFechaHoraInicio(inicioFinal);
         schedule.setFechaHoraFin(finFinal);
@@ -304,6 +311,25 @@ public class ScheduleService {
         return new DuplicateWeeklyResponse(
                 saved.stream().map(ScheduleResponse::from).toList(),
                 batchWarning);
+    }
+
+    /**
+     * Bloquea la asignación de un turno si se superpone con una licencia APROBADA
+     * del empleado. Las licencias son por día completo; un turno que cruza
+     * medianoche toca dos días calendario, por eso se calcula el último día
+     * efectivamente ocupado en vez de usar la fecha de fin del timestamp tal cual
+     * (si termina justo a medianoche no ocupa ese día siguiente).
+     */
+    private void checkSinLicenciaAprobada(UUID companyId, UUID employeeId,
+                                           java.time.LocalDateTime inicio, java.time.LocalDateTime fin) {
+        LocalDate desde = inicio.toLocalDate();
+        LocalDate hasta = fin.toLocalTime().equals(LocalTime.MIDNIGHT)
+                ? fin.toLocalDate().minusDays(1)
+                : fin.toLocalDate();
+
+        if (!leaveRequestRepository.findApprovedOverlappingIds(companyId, employeeId, desde, hasta).isEmpty()) {
+            throw new ConflictException("El empleado tiene una licencia aprobada en ese rango de fechas");
+        }
     }
 
     // ── disponibilidad ────────────────────────────────────────────────────────

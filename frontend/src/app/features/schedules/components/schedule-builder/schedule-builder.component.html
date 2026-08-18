@@ -98,6 +98,18 @@
                   ></div>
                 }
 
+                <!-- Licencia aprobada (bloque de fondo, no clickeable) -->
+                @for (lr of leavesForDay(day); track lr.id) {
+                  <div
+                    class="pointer-events-none absolute inset-x-0.5 top-0 z-10 flex items-start justify-center overflow-hidden rounded border border-dashed border-brand-muted bg-brand-acc/60 p-1 text-center text-[11px] leading-tight text-brand-muted"
+                    [style.height.px]="gridHeightPx"
+                  >
+                    <span class="truncate">
+                      🏖 {{ role === 'EMPLOYEE' ? 'Licencia aprobada' : getEmployeeName(lr.employeeId) + ' — licencia' }}
+                    </span>
+                  </div>
+                }
+
                 <!-- Add button (hoverable) -->
                 @if (canWrite) {
                   <button
