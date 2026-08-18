@@ -75,12 +75,14 @@ public class AuthService {
             throw new InvalidCredentialsException();
         }
 
-        List<UUID> branchIds = user.getBranches().stream().map(b -> b.getId()).collect(Collectors.toList());
-        StafflyUserPrincipal principal = new StafflyUserPrincipal(
-                user.getId(), user.getCompanyId(), Rol.valueOf(user.getRol().name()), branchIds);
-
+        StafflyUserPrincipal principal = principalFromUser(user);
         UserSummary summary = new UserSummary(user.getId(), user.getEmail(), principal.getRol(), user.isDebeCambiarPassword());
         return buildLoginResponse(principal, summary);
+    }
+
+    private StafflyUserPrincipal principalFromUser(User user) {
+        List<UUID> branchIds = user.getBranches().stream().map(b -> b.getId()).collect(Collectors.toList());
+        return new StafflyUserPrincipal(user.getId(), user.getCompanyId(), Rol.valueOf(user.getRol().name()), branchIds);
     }
 
     private LoginResponse loginAsPlatformAdmin(PlatformAdmin platformAdmin, String password) {
@@ -104,29 +106,30 @@ public class AuthService {
 
     @Transactional
     public RefreshResponse refresh(String refreshToken) {
-        StafflyUserPrincipal principal = validateAndConsumeRefreshToken(refreshToken);
-        ensureAccountStillActive(principal);
+        StafflyUserPrincipal claimedPrincipal = validateAndConsumeRefreshToken(refreshToken);
+        StafflyUserPrincipal freshPrincipal = reloadPrincipal(claimedPrincipal);
 
-        String newAccessToken = jwtService.generateAccessToken(principal);
-        String newRefreshToken = jwtService.generateRefreshToken(principal);
+        String newAccessToken = jwtService.generateAccessToken(freshPrincipal);
+        String newRefreshToken = jwtService.generateRefreshToken(freshPrincipal);
         return new RefreshResponse(newAccessToken, newRefreshToken, accessTokenMinutes * 60);
     }
 
     /**
      * El refresh token es válido por días: los claims pueden describir una
-     * cuenta que ya fue desactivada, o una empresa suspendida, después de
-     * emitido. Se revalida contra la DB en cada refresh — sin esto,
-     * desactivar un usuario no le corta la sesión (puede encadenar refresh
-     * indefinidamente con tokens que solo se verifican por firma).
+     * cuenta que ya fue desactivada, una empresa suspendida, o un rol/sucursales
+     * que ya cambiaron, después de emitido. Se revalida contra la DB en cada
+     * refresh y se reconstruye el principal desde la fila actual — sin esto,
+     * desactivar un usuario no le corta la sesión, y un cambio de rol o de
+     * sucursales asignadas no tiene efecto hasta el próximo login manual.
      */
-    private void ensureAccountStillActive(StafflyUserPrincipal principal) {
+    private StafflyUserPrincipal reloadPrincipal(StafflyUserPrincipal principal) {
         if (principal.getRol() == Rol.SUPER_ADMIN) {
             PlatformAdmin platformAdmin = platformAdminRepository.findById(principal.getUserId())
                     .orElseThrow(() -> new InvalidTokenException("La cuenta ya no existe"));
             if (platformAdmin.getEstado() != EstadoPlatformAdmin.ACTIVO) {
                 throw new InvalidTokenException("La cuenta está desactivada");
             }
-            return;
+            return principal;
         }
 
         User user = userRepository.findById(principal.getUserId())
@@ -137,6 +140,8 @@ public class AuthService {
         if (!isCompanyActive(user.getCompanyId())) {
             throw new InvalidTokenException("La empresa está suspendida");
         }
+
+        return principalFromUser(user);
     }
 
     private boolean isCompanyActive(UUID companyId) {
