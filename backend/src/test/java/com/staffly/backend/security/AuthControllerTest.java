@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -320,5 +321,63 @@ class AuthControllerTest {
 
         StafflyUserPrincipal parsed = jwtService.toPrincipal(jwtService.parseToken(newAccessToken));
         assertThat(parsed.getBranchIds()).containsExactly(branchB.getId());
+    }
+
+    @Test
+    void requestsBlockedUntilPasswordChangedThenAllowedWithSameAccessToken() throws Exception {
+        // el usuario seed ya tiene debeCambiarPassword=true (ver seedUser())
+        String loginBody = objectMapper.writeValueAsString(Map.of(
+                "email", "admin@heladeria-test.com",
+                "password", PASSWORD));
+        String loginResponseJson = mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType("application/json")
+                        .content(loginBody))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        String accessToken = objectMapper.readTree(loginResponseJson).get("accessToken").asText();
+
+        // bloqueado antes de cambiar la contraseña
+        mockMvc.perform(get("/api/v1/branches").header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("PASSWORD_CHANGE_REQUIRED"));
+
+        // cambia la contraseña con el mismo access token
+        String changePasswordBody = objectMapper.writeValueAsString(Map.of(
+                "currentPassword", PASSWORD,
+                "newPassword", "NewPassword456"));
+        mockMvc.perform(post("/api/v1/auth/change-password")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType("application/json")
+                        .content(changePasswordBody))
+                .andExpect(status().isNoContent());
+
+        // el MISMO access token (emitido cuando el flag todavía era true) ahora
+        // pasa: la revalidación es contra la DB en cada request, no contra un
+        // claim fijo del JWT — por eso no hace falta refrescar el token
+        mockMvc.perform(get("/api/v1/branches").header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void logoutIsAllowedEvenWithPendingPasswordChange() throws Exception {
+        // el usuario seed ya tiene debeCambiarPassword=true (ver seedUser())
+        String loginBody = objectMapper.writeValueAsString(Map.of(
+                "email", "admin@heladeria-test.com",
+                "password", PASSWORD));
+        String loginResponseJson = mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType("application/json")
+                        .content(loginBody))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        Map<?, ?> loginResponse = objectMapper.readValue(loginResponseJson, Map.class);
+        String accessToken = (String) loginResponse.get("accessToken");
+        String refreshToken = (String) loginResponse.get("refreshToken");
+
+        String logoutBody = objectMapper.writeValueAsString(Map.of("refreshToken", refreshToken));
+        mockMvc.perform(post("/api/v1/auth/logout")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType("application/json")
+                        .content(logoutBody))
+                .andExpect(status().isNoContent());
     }
 }
