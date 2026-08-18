@@ -48,4 +48,22 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, UUID
             @Param("companyId") UUID companyId,
             @Param("employeeId") UUID employeeId,
             @Param("estado") EstadoLicencia estado);
+
+    /**
+     * IDs de licencias APROBADA del empleado cuyo rango de días [fechaInicio, fechaFin]
+     * se superpone con [desde, hasta] (ambos inclusive, granularidad de día).
+     */
+    @Query("""
+        SELECT lr.id FROM LeaveRequest lr
+        WHERE lr.companyId = :companyId
+          AND lr.employee.id = :employeeId
+          AND lr.estado = com.staffly.backend.leave.EstadoLicencia.APROBADA
+          AND lr.fechaInicio <= :hasta
+          AND lr.fechaFin >= :desde
+    """)
+    List<UUID> findApprovedOverlappingIds(
+            @Param("companyId") UUID companyId,
+            @Param("employeeId") UUID employeeId,
+            @Param("desde") java.time.LocalDate desde,
+            @Param("hasta") java.time.LocalDate hasta);
 }
