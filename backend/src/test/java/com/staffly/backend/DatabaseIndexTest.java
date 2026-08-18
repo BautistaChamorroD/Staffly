@@ -21,27 +21,27 @@ class DatabaseIndexTest {
 
     @Test
     void branchHasIndexOnCompanyId() throws Exception {
-        assertThat(indexedColumns("BRANCH")).contains("COMPANY_ID");
+        assertThat(indexNames("BRANCH")).contains("IDX_BRANCH_COMPANY");
     }
 
     @Test
     void appUserHasIndexOnCompanyId() throws Exception {
-        assertThat(indexedColumns("APP_USER")).contains("COMPANY_ID");
+        assertThat(indexNames("APP_USER")).contains("IDX_APP_USER_COMPANY");
     }
 
-    private Set<String> indexedColumns(String tableName) throws Exception {
-        Set<String> columns = new HashSet<>();
+    private Set<String> indexNames(String tableName) throws Exception {
+        Set<String> names = new HashSet<>();
         try (Connection connection = dataSource.getConnection()) {
             DatabaseMetaData metaData = connection.getMetaData();
             try (ResultSet rs = metaData.getIndexInfo(null, null, tableName, false, false)) {
                 while (rs.next()) {
-                    String column = rs.getString("COLUMN_NAME");
-                    if (column != null) {
-                        columns.add(column.toUpperCase());
+                    String indexName = rs.getString("INDEX_NAME");
+                    if (indexName != null) {
+                        names.add(indexName.toUpperCase());
                     }
                 }
             }
         }
-        return columns;
+        return names;
     }
 }
