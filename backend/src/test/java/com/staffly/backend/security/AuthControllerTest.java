@@ -1,6 +1,8 @@
 package com.staffly.backend.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.staffly.backend.branch.Branch;
+import com.staffly.backend.branch.EstadoSucursal;
 import com.staffly.backend.company.Company;
 import com.staffly.backend.company.EstadoEmpresa;
 import com.staffly.backend.platform.EstadoPlatformAdmin;
@@ -53,6 +55,9 @@ class AuthControllerTest {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private JwtService jwtService;
+
     private Company company;
     private User user;
 
@@ -89,6 +94,18 @@ class AuthControllerTest {
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         return objectMapper.readTree(response).get("refreshToken").asText();
+    }
+
+    private Branch createBranch(String nombre) {
+        Branch b = new Branch();
+        b.setCompanyId(company.getId());
+        b.setNombre(nombre);
+        b.setDireccion("Dir");
+        b.setZonaHoraria("America/Argentina/Buenos_Aires");
+        b.setEstado(EstadoSucursal.ACTIVA);
+        entityManager.persist(b);
+        entityManager.flush();
+        return b;
     }
 
     @Test
@@ -258,5 +275,50 @@ class AuthControllerTest {
                 .andExpect(status().isOk());
 
         assertThat(revokedTokenRepository.existsById(expiredJti)).isFalse();
+    }
+
+    @Test
+    void refreshRebuildsPrincipalWithCurrentRoleAndBranches() throws Exception {
+        Branch branchA = createBranch("Sucursal A");
+        Branch branchB = createBranch("Sucursal B");
+
+        User supervisor = new User();
+        supervisor.setCompanyId(company.getId());
+        supervisor.setEmail("supervisor@heladeria-test.com");
+        supervisor.setPasswordHash(passwordEncoder.encode(PASSWORD));
+        supervisor.setRol(RolUsuario.SUPERVISOR);
+        supervisor.setEstado(EstadoUsuario.ACTIVO);
+        supervisor.setDebeCambiarPassword(false);
+        supervisor.getBranches().add(branchA);
+        userRepository.save(supervisor);
+        entityManager.flush();
+
+        String loginBody = objectMapper.writeValueAsString(Map.of(
+                "email", "supervisor@heladeria-test.com",
+                "password", PASSWORD));
+        String loginResponseJson = mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType("application/json")
+                        .content(loginBody))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        String refreshToken = objectMapper.readTree(loginResponseJson).get("refreshToken").asText();
+
+        // se reasignan las sucursales del supervisor DESPUÉS de emitido el token,
+        // simulando un PATCH /users/{id} hecho por un Admin mientras la sesión sigue abierta
+        supervisor.getBranches().clear();
+        supervisor.getBranches().add(branchB);
+        userRepository.save(supervisor);
+        entityManager.flush();
+
+        String refreshBody = objectMapper.writeValueAsString(Map.of("refreshToken", refreshToken));
+        String refreshResponseJson = mockMvc.perform(post("/api/v1/auth/refresh")
+                        .contentType("application/json")
+                        .content(refreshBody))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        String newAccessToken = objectMapper.readTree(refreshResponseJson).get("accessToken").asText();
+
+        StafflyUserPrincipal parsed = jwtService.toPrincipal(jwtService.parseToken(newAccessToken));
+        assertThat(parsed.getBranchIds()).containsExactly(branchB.getId());
     }
 }
