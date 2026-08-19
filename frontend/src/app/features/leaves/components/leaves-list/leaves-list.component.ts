@@ -11,6 +11,7 @@ import { SelectComponent, SelectOption } from '../../../../shared/components/sel
 import { Employee } from '../../../employees/models/employee';
 import { EmployeeService } from '../../../employees/services/employee.service';
 import { ESTADO_LICENCIA_LABELS } from '../../../../core/i18n/strings';
+import { Schedule } from '../../../schedules/models/schedule';
 import { CreateLeaveRequestBody, EstadoLicencia, LeaveRequest, LeaveType } from '../../models/leave';
 import { LeaveRequestService } from '../../services/leave-request.service';
 import { LeaveTypeService } from '../../services/leave-type.service';
@@ -249,13 +250,30 @@ export class LeavesListComponent implements OnInit {
       },
       error: (err) => {
         this.approvingId = null;
-        if (err?.status === 409) {
+        const turnos: Schedule[] | undefined = err?.error?.turnosConflictivos;
+        if (err?.status === 409 && turnos?.length) {
+          this.approveErrors[req.id] =
+            `Conflicto: el empleado ya tiene turno el ${this.formatConflictos(turnos)}.`;
+        } else if (err?.status === 409) {
           this.approveErrors[req.id] = 'Conflicto: el empleado tiene un turno asignado en esas fechas.';
         } else {
           this.approveErrors[req.id] = 'No se pudo aprobar la solicitud. Intentá de nuevo.';
         }
       },
     });
+  }
+
+  /** Formatea la lista de turnos conflictivos del 409 de approve() para el mensaje de error. */
+  private formatConflictos(turnos: Schedule[]): string {
+    return turnos
+      .map((s) => {
+        const inicio = new Date(s.fechaHoraInicio);
+        const fin = new Date(s.fechaHoraFin);
+        const fecha = `${String(inicio.getDate()).padStart(2, '0')}/${String(inicio.getMonth() + 1).padStart(2, '0')}`;
+        const hora = (d: Date) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+        return `${fecha} ${hora(inicio)}–${hora(fin)}`;
+      })
+      .join(', ');
   }
 
   // ── Rechazar ───────────────────────────────────────────────────────────────

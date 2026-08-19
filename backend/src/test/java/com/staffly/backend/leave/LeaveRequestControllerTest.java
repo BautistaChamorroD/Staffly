@@ -314,7 +314,10 @@ class LeaveRequestControllerTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("LEAVE_APPROVAL_CONFLICT"))
                 .andExpect(jsonPath("$.turnosConflictivos").isArray())
-                .andExpect(jsonPath("$.turnosConflictivos.length()").value(1));
+                .andExpect(jsonPath("$.turnosConflictivos.length()").value(1))
+                .andExpect(jsonPath("$.turnosConflictivos[0].branchId").value(branchA1.getId().toString()))
+                .andExpect(jsonPath("$.turnosConflictivos[0].fechaHoraInicio").value("2026-09-03T08:00:00"))
+                .andExpect(jsonPath("$.turnosConflictivos[0].fechaHoraFin").value("2026-09-03T16:00:00"));
     }
 
     @Test
