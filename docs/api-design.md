@@ -226,7 +226,7 @@ Response 201 incluye la empresa creada y confirma el envío/generación de contr
 | GET | `/payroll-periods` | Lista períodos. Filtros: `?estado=`. | ADMIN, RRHH |
 | POST | `/payroll-periods` | Abre un nuevo período (fecha inicio/fin). | ADMIN, RRHH |
 | GET | `/payroll-periods/{id}` | Detalle de un período. | ADMIN, RRHH |
-| POST | `/payroll-periods/{id}/close` | Cierra el período: dispara el cálculo de todos los `Payslip` correspondientes (RF-17, RF-20). Responde **409** si ya está cerrado. | ADMIN, RRHH |
+| POST | `/payroll-periods/{id}/close` | Cierra el período: dispara el cálculo de todos los `Payslip` correspondientes (RF-17, RF-20). Responde **409** si ya está cerrado. Mueve dinero real — restringido igual que `reopen`. | ADMIN (únicamente) |
 | POST | `/payroll-periods/{id}/reopen` | Reabre un período cerrado (operación sensible). | ADMIN (únicamente) |
 
 ---

@@ -29,7 +29,9 @@ export class PayrollPeriodsComponent implements OnInit {
   private fb = inject(FormBuilder);
 
   readonly isAdmin = this.authService.getRole() === 'ADMIN';
-  readonly canClose = this.authService.getRole() === 'ADMIN' || this.authService.getRole() === 'RRHH';
+  // Cerrar un período mueve dinero real (dispara el cálculo y pago de todos los
+  // recibos) — restringido a ADMIN igual que reabrir, no RRHH (issue #148).
+  readonly canClose = this.isAdmin;
 
   periods: PayrollPeriod[] = [];
   loading = true;
