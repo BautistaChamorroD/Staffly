@@ -1,5 +1,6 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
 
 import { AuthService } from '../../../../core/services/auth.service';
@@ -36,6 +37,7 @@ export class LeavesListComponent implements OnInit {
   private employeeService = inject(EmployeeService);
   private authService = inject(AuthService);
   private fb = inject(FormBuilder);
+  private router = inject(Router);
 
   protected readonly ESTADO_LICENCIA_LABELS = ESTADO_LICENCIA_LABELS;
 
@@ -352,6 +354,16 @@ export class LeavesListComponent implements OnInit {
     const now = new Date();
     const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     return req.fechaInicio > today;
+  }
+
+  /**
+   * No existe forma de forzar approve() pese al conflicto (misma clase de estado
+   * inválido que turno-vs-turno bloquea siempre) — la única salida es que el
+   * operador resuelva el turno en conflicto a mano. Este link lleva al builder en
+   * la semana de la licencia; el operador ubica y edita/borra el turno ahí.
+   */
+  verTurnoEnConflicto(req: LeaveRequest): void {
+    this.router.navigate(['/schedules'], { queryParams: { desde: req.fechaInicio } });
   }
 
   // ── Tipos de licencia (ADMIN) ──────────────────────────────────────────────

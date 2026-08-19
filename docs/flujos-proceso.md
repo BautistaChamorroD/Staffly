@@ -12,8 +12,9 @@ flowchart TD
     B --> C{Supervisor/RRHH revisa}
     C -->|sin conflicto| D[Aprobar directo — 201]
     C -->|hay conflicto con Schedule| E[409: conflicto mostrado antes de confirmar]
-    E -->|decide igual| F[Estado: aprobada]
-    D --> F
+    E -->|operador resuelve el turno en conflicto| J[Editar/borrar el Schedule desde su detalle]
+    J --> C
+    D --> F[Estado: aprobada]
     F --> G[Bloquea Schedule superpuesto]
     G --> H[Impacta liquidación según si LeaveType es paga]
     C -.->|rechazo posible en cualquier punto| I[Estado: rechazada]
@@ -21,6 +22,7 @@ flowchart TD
 
 **Puntos clave**:
 - El chequeo de conflicto contra `Schedule` ocurre **antes** de confirmar la aprobación, no después — el endpoint `POST /leave-requests/{id}/approve` responde 409 con el detalle del conflicto (ver `api-design.md`, sección 9), permitiendo a quien aprueba decidir con la información completa.
+- **No existe un camino para forzar la aprobación pese al conflicto.** Es la misma clase de estado inválido que la validación de turno-vs-turno ya bloquea sin excepción (`ScheduleService.create`/`update`, sin flag de override) — permitir que una licencia aprobada y un turno asignado coexistan superpuestos sería la misma inconsistencia vista desde el otro lado. La única salida es que el operador vaya al turno en conflicto (link directo desde la card, ver `ux-decisions.md`) y lo edite o borre — solo posible si sigue en estado `PLANIFICADO` — y recién ahí reintente `approve()`.
 - Una vez aprobada, la licencia bloquea la asignación de nuevos turnos superpuestos (RF-15e) — es un bloqueo duro, a diferencia de la advertencia (no bloqueo) que aplica para disponibilidad declarada.
 - El impacto en la liquidación (paga/no paga) se resuelve en el momento del **cierre de período**, no en el momento de la aprobación — ver flujo 2.
 

@@ -76,6 +76,13 @@
               @if (canManage && req.tieneConflicto) {
                 <p class="mt-1 text-xs font-medium text-badge-warning-ink">
                   ⚠ Se superpone con un turno ya asignado del empleado.
+                  <button
+                    type="button"
+                    class="underline hover:opacity-80"
+                    (click)="verTurnoEnConflicto(req)"
+                  >
+                    Ver turno en conflicto
+                  </button>
                 </p>
               }
             </div>

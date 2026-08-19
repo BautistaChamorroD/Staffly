@@ -1,6 +1,7 @@
 import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { distinctUntilChanged } from 'rxjs';
 
 import { AuthService } from '../../../../core/services/auth.service';
@@ -77,6 +78,7 @@ export class ScheduleBuilderComponent implements OnInit {
   private authService = inject(AuthService);
   private fb = inject(FormBuilder);
   private destroyRef = inject(DestroyRef);
+  private route = inject(ActivatedRoute);
 
   readonly role = this.authService.getRole();
   readonly canWrite = this.role === 'ADMIN' || this.role === 'RRHH' || this.role === 'SUPERVISOR';
@@ -100,7 +102,9 @@ export class ScheduleBuilderComponent implements OnInit {
   loadError: string | null = null;
   branchesError: string | null = null;
 
-  currentWeekStart: Date = getMonday(new Date());
+  // Si se llega desde un link de "ver turno en conflicto" (leaves-list), ?desde=YYYY-MM-DD
+  // ubica la grilla en la semana correspondiente en vez de la semana actual.
+  currentWeekStart: Date = getMonday(this.initialDateFromQueryParam());
 
   filterForm = this.fb.group({ branchId: [''] });
 
@@ -185,6 +189,13 @@ export class ScheduleBuilderComponent implements OnInit {
 
   get employeeOptions(): SelectOption[] {
     return this.employees.map((e) => ({ value: e.id, label: `${e.nombre} ${e.apellido}` }));
+  }
+
+  private initialDateFromQueryParam(): Date {
+    const desde = this.route.snapshot.queryParamMap.get('desde');
+    if (!desde) return new Date();
+    const parsed = new Date(`${desde}T00:00:00`);
+    return isNaN(parsed.getTime()) ? new Date() : parsed;
   }
 
   ngOnInit(): void {
