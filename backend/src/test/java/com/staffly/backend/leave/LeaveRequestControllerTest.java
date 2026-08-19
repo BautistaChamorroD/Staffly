@@ -373,6 +373,36 @@ class LeaveRequestControllerTest {
     }
 
     @Test
+    void rejectAprobadaRetorna400() throws Exception {
+        // issue #103: rechazar una solicitud ya APROBADA debe estar bloqueado
+        String id = createLeaveRequest(adminAToken, empA1.getId(), "2026-09-01", "2026-09-05");
+        mockMvc.perform(post(BASE_URL + "/" + id + "/approve")
+                        .header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post(BASE_URL + "/" + id + "/reject")
+                        .header("Authorization", "Bearer " + adminAToken)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(Map.of("motivo", "Cambio de planes"))))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void cancelAprobadaFechaInicioHoyRetorna400() throws Exception {
+        // issue #104: el borde exacto — fechaInicio == hoy ya cuenta como "iniciada"
+        String hoy = LocalDate.now().toString();
+        String enTresDias = LocalDate.now().plusDays(3).toString();
+        String id = createLeaveRequest(adminAToken, empA1.getId(), hoy, enTresDias);
+        mockMvc.perform(post(BASE_URL + "/" + id + "/approve")
+                        .header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post(BASE_URL + "/" + id + "/cancel")
+                        .header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void cancelPendienteByEmpleado() throws Exception {
         String empToken = createUserAndLogin(companyAId, "emp@empresa-a.com", RolUsuario.EMPLOYEE, null, empA1);
         String id = createLeaveRequest(adminAToken, empA1.getId(), "2026-09-01", "2026-09-05");
