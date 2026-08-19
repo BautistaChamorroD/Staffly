@@ -56,6 +56,7 @@ class PayrollConfigControllerTest {
         mockMvc.perform(get(BASE_URL).header("Authorization", "Bearer " + adminAToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.umbralHorasExtra").value(8))
+                .andExpect(jsonPath("$.tipoUmbral").value("DIARIO"))
                 .andExpect(jsonPath("$.multiplicadorHoraExtra").value(1.5))
                 .andExpect(jsonPath("$.multiplicadorFeriado").value(2.0))
                 .andExpect(jsonPath("$.periodicidad").value("MENSUAL"))
@@ -81,6 +82,7 @@ class PayrollConfigControllerTest {
     void updateConfig() throws Exception {
         Map<String, Object> body = Map.of(
                 "umbralHorasExtra", 9,
+                "tipoUmbral", "SEMANAL",
                 "multiplicadorHoraExtra", 1.75,
                 "multiplicadorFeriado", 2.5,
                 "periodicidad", "QUINCENAL",
@@ -96,6 +98,7 @@ class PayrollConfigControllerTest {
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.umbralHorasExtra").value(9))
+                .andExpect(jsonPath("$.tipoUmbral").value("SEMANAL"))
                 .andExpect(jsonPath("$.periodicidad").value("QUINCENAL"))
                 .andExpect(jsonPath("$.conceptosDescuento.length()").value(2))
                 .andExpect(jsonPath("$.conceptosDescuento[0].nombre").value("Obra Social"))
@@ -105,7 +108,7 @@ class PayrollConfigControllerTest {
     @Test
     void updateIsUpsert() throws Exception {
         Map<String, Object> body = Map.of(
-                "umbralHorasExtra", 8, "multiplicadorHoraExtra", 1.5,
+                "umbralHorasExtra", 8, "tipoUmbral", "DIARIO", "multiplicadorHoraExtra", 1.5,
                 "multiplicadorFeriado", 2.0, "periodicidad", "MENSUAL",
                 "conceptosDescuento", List.of()
         );
@@ -135,7 +138,7 @@ class PayrollConfigControllerTest {
                 .andExpect(status().isForbidden());
 
         Map<String, Object> body = Map.of(
-                "umbralHorasExtra", 8, "multiplicadorHoraExtra", 1.5,
+                "umbralHorasExtra", 8, "tipoUmbral", "DIARIO", "multiplicadorHoraExtra", 1.5,
                 "multiplicadorFeriado", 2.0, "periodicidad", "MENSUAL",
                 "conceptosDescuento", List.of()
         );
@@ -149,7 +152,7 @@ class PayrollConfigControllerTest {
     @Test
     void invalidTipoConceptoReturns400() throws Exception {
         Map<String, Object> body = Map.of(
-                "umbralHorasExtra", 8, "multiplicadorHoraExtra", 1.5,
+                "umbralHorasExtra", 8, "tipoUmbral", "DIARIO", "multiplicadorHoraExtra", 1.5,
                 "multiplicadorFeriado", 2.0, "periodicidad", "MENSUAL",
                 "conceptosDescuento", List.of(
                         Map.of("nombre", "X", "tipo", "INVALIDO", "valor", 10)
@@ -169,7 +172,7 @@ class PayrollConfigControllerTest {
 
         // Empresa B configura con valor distinto
         Map<String, Object> bodyB = Map.of(
-                "umbralHorasExtra", 40, "multiplicadorHoraExtra", 2.0,
+                "umbralHorasExtra", 40, "tipoUmbral", "SEMANAL", "multiplicadorHoraExtra", 2.0,
                 "multiplicadorFeriado", 3.0, "periodicidad", "QUINCENAL",
                 "conceptosDescuento", List.of()
         );

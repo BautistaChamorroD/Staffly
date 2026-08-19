@@ -32,6 +32,10 @@ public class PayrollConfig extends TenantAwareEntity {
     @Column(name = "periodicidad", nullable = false, length = 20)
     private Periodicidad periodicidad;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo_umbral", nullable = false, length = 20)
+    private TipoUmbral tipoUmbral;
+
     @Convert(converter = ConceptoDescuentoListConverter.class)
     @Column(name = "conceptos_descuento", nullable = false, columnDefinition = "TEXT")
     private List<ConceptoDescuento> conceptosDescuento = new ArrayList<>();
@@ -49,6 +53,9 @@ public class PayrollConfig extends TenantAwareEntity {
 
     public Periodicidad getPeriodicidad() { return periodicidad; }
     public void setPeriodicidad(Periodicidad periodicidad) { this.periodicidad = periodicidad; }
+
+    public TipoUmbral getTipoUmbral() { return tipoUmbral; }
+    public void setTipoUmbral(TipoUmbral tipoUmbral) { this.tipoUmbral = tipoUmbral; }
 
     public List<ConceptoDescuento> getConceptosDescuento() { return conceptosDescuento; }
     public void setConceptosDescuento(List<ConceptoDescuento> conceptosDescuento) {
