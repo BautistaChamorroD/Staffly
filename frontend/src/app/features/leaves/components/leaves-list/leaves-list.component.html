@@ -17,8 +17,8 @@
                 <span class="text-sm font-medium text-brand-ink">{{ t.nombre }}</span>
                 <span class="ml-2 text-xs text-brand-muted">
                   {{ t.esPaga ? 'Paga' : 'No paga' }}
-                  @if (t.tieneCupoAnual && t.cuposDiasAnual != null) {
-                    · {{ t.cuposDiasAnual }} días/año
+                  @if (t.cupoAnual != null) {
+                    · {{ t.cupoAnual }} días/año
                   }
                 </span>
               </div>
@@ -236,7 +236,7 @@
         <ui-input
           label="Días por año"
           type="number"
-          formControlName="cuposDiasAnual"
+          formControlName="cupoAnual"
         ></ui-input>
       }
     </form>
