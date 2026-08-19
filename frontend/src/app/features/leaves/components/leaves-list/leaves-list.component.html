@@ -94,12 +94,6 @@
                   Rechazar
                 </button>
               }
-              @if (canManage && req.estado === 'APROBADA') {
-                <button ui-button variant="secondary" size="sm" type="button"
-                  (click)="openRejectModal(req)">
-                  Rechazar
-                </button>
-              }
               @if (canCancel(req)) {
                 <button ui-button variant="secondary" size="sm" type="button"
                   (click)="openCancelModal(req)">
