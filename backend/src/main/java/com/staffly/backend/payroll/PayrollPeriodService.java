@@ -1,5 +1,7 @@
 package com.staffly.backend.payroll;
 
+import com.staffly.backend.advance.AdvanceRepository;
+import com.staffly.backend.advance.EstadoAdelanto;
 import com.staffly.backend.common.BadRequestException;
 import com.staffly.backend.common.ConflictException;
 import com.staffly.backend.common.ResourceNotFoundException;
@@ -21,11 +23,14 @@ public class PayrollPeriodService {
 
     private final PayrollPeriodRepository repository;
     private final PayslipRepository       payslipRepository;
+    private final AdvanceRepository       advanceRepository;
 
     public PayrollPeriodService(PayrollPeriodRepository repository,
-                                PayslipRepository payslipRepository) {
+                                PayslipRepository payslipRepository,
+                                AdvanceRepository advanceRepository) {
         this.repository        = repository;
         this.payslipRepository = payslipRepository;
+        this.advanceRepository = advanceRepository;
     }
 
     @Transactional(readOnly = true)
@@ -90,6 +95,14 @@ public class PayrollPeriodService {
         payslips.forEach(p -> {
             p.setEstado(EstadoRecibo.GENERADO);
             p.setFechaPago(null);
+
+            // revertir los adelantos que este recibo había descontado — si no se
+            // revierten, quedan DESCONTADO sin haberse pagado nunca (issue #147).
+            for (UUID advanceId : p.getAdelantosAplicados()) {
+                advanceRepository.findByIdAndCompanyId(advanceId, companyId)
+                        .filter(a -> a.getEstado() == EstadoAdelanto.DESCONTADO)
+                        .ifPresent(a -> a.setEstado(EstadoAdelanto.PENDIENTE));
+            }
         });
 
         return PayrollPeriodResponse.from(repository.save(period));

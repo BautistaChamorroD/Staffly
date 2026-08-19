@@ -1,6 +1,8 @@
 package com.staffly.backend.payroll;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.staffly.backend.advance.Advance;
+import com.staffly.backend.advance.EstadoAdelanto;
 import com.staffly.backend.branch.Branch;
 import com.staffly.backend.branch.EstadoSucursal;
 import com.staffly.backend.company.Company;
@@ -94,6 +96,33 @@ class PayrollPeriodReopenControllerTest {
         Payslip refreshed = entityManager.find(Payslip.class, p.getId());
         assertThat(refreshed.getEstado()).isEqualTo(EstadoRecibo.GENERADO);
         assertThat(refreshed.getFechaPago()).isNull();
+    }
+
+    @Test
+    void reopenRevierteAdvancesDescontadosDelPayslip() throws Exception {
+        // issue #147 (AUD-26, parte b): reabrir debe revertir los Advance ya
+        // marcados DESCONTADO cuando se cerró el período que los descontó.
+        Advance advance = new Advance();
+        advance.setCompanyId(companyAId);
+        advance.setEmployee(empA1);
+        advance.setFecha(LocalDate.of(2026, 6, 10));
+        advance.setMonto(BigDecimal.valueOf(5000));
+        advance.setMotivo("Adelanto");
+        advance.setEstado(EstadoAdelanto.DESCONTADO);
+        entityManager.persist(advance);
+
+        createPayslipConAdelanto(companyAId, empA1, periodA, advance.getId());
+        entityManager.flush();
+
+        mockMvc.perform(post(BASE_URL + "/" + periodA.getId() + "/reopen")
+                        .header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isOk());
+
+        entityManager.flush();
+        entityManager.clear();
+
+        Advance refreshed = entityManager.find(Advance.class, advance.getId());
+        assertThat(refreshed.getEstado()).isEqualTo(EstadoAdelanto.PENDIENTE);
     }
 
     @Test
@@ -193,6 +222,23 @@ class PayrollPeriodReopenControllerTest {
         );
         Payslip p = PayslipFactory.normal(companyId, emp, period, calc);
         p.setEstado(estado);
+        p.setFechaPago(LocalDate.of(2026, 6, 30));
+        entityManager.persist(p); entityManager.flush();
+        return p;
+    }
+
+    private Payslip createPayslipConAdelanto(UUID companyId, Employee emp, PayrollPeriod period, UUID advanceId) {
+        PayslipCalculation calc = new PayslipCalculation(
+                emp.getId(), period.getId(),
+                emp.getSueldoBase(), BigDecimal.valueOf(500),
+                BigDecimal.valueOf(160), BigDecimal.ZERO, BigDecimal.ZERO,
+                BigDecimal.valueOf(80_000), BigDecimal.ZERO, BigDecimal.ZERO,
+                BigDecimal.valueOf(80_000), BigDecimal.ZERO, BigDecimal.valueOf(75_000),
+                List.of(), BigDecimal.ZERO, List.of(advanceId), BigDecimal.valueOf(5000),
+                BigDecimal.valueOf(75_000)
+        );
+        Payslip p = PayslipFactory.normal(companyId, emp, period, calc);
+        p.setEstado(EstadoRecibo.PAGADO);
         p.setFechaPago(LocalDate.of(2026, 6, 30));
         entityManager.persist(p); entityManager.flush();
         return p;

@@ -140,6 +140,33 @@ class PayrollPeriodCloseControllerTest {
     }
 
     @Test
+    void reabrirYCerrarDeNuevo_noDuplicaPayslips() throws Exception {
+        // issue #147 (AUD-26, parte b): cerrar → reabrir → volver a cerrar el mismo
+        // período no debe dejar dos recibos NORMAL para el mismo empleado+período.
+        mockMvc.perform(post(BASE_URL + "/" + periodA.getId() + "/close")
+                        .header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isOk());
+
+        entityManager.flush();
+        entityManager.clear();
+        long countTrasPrimerCierre = payslipRepository.findByCompanyId(companyAId).size();
+
+        mockMvc.perform(post(BASE_URL + "/" + periodA.getId() + "/reopen")
+                        .header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post(BASE_URL + "/" + periodA.getId() + "/close")
+                        .header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isOk());
+
+        entityManager.flush();
+        entityManager.clear();
+        long countTrasSegundoCierre = payslipRepository.findByCompanyId(companyAId).size();
+
+        assertThat(countTrasSegundoCierre).isEqualTo(countTrasPrimerCierre);
+    }
+
+    @Test
     void tenantIsolation() throws Exception {
         UUID companyBId   = createCompany("Empresa B");
         String adminBToken = createUserAndLogin(companyBId, "admin@b.com", RolUsuario.ADMIN, null);

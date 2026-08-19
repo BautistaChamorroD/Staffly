@@ -34,7 +34,16 @@ public final class PayslipFactory {
         p.setEstado(EstadoRecibo.GENERADO);
         p.setTipo(tipo);
         p.setPayslipOriginalId(originalId);
+        applySnapshot(p, calc);
+        return p;
+    }
 
+    /**
+     * Vuelca los campos calculados de {@code calc} sobre un Payslip existente —
+     * usado al recalcular in-place un recibo NORMAL ya persistido (ej. al volver a
+     * cerrar un período tras reabrirlo), para no dejar duplicados.
+     */
+    public static void applySnapshot(Payslip p, PayslipCalculation calc) {
         p.setSueldoBase(calc.sueldoBase());
         p.setHorasNormales(calc.horasNormales());
         p.setHorasExtra(calc.horasExtra());
@@ -48,7 +57,5 @@ public final class PayslipFactory {
         p.setNetoFinal(calc.netoFinal());
         p.setDetalleDescuentos(calc.deducciones());
         p.setAdelantosAplicados(calc.adelantosAplicados());
-
-        return p;
     }
 }

@@ -62,7 +62,7 @@ public class PayrollPeriodCloseService extends PayrollCloseTemplate {
 
     @Override
     protected PayrollPeriod validateAndLoadPeriod(UUID periodId, UUID companyId) {
-        PayrollPeriod period = periodRepository.findByIdAndCompanyId(periodId, companyId)
+        PayrollPeriod period = periodRepository.findByIdAndCompanyIdForUpdate(periodId, companyId)
                 .orElseThrow(() -> new ResourceNotFoundException("No se encontró el período"));
         if (period.getEstado() == EstadoPeriodo.CERRADO) {
             throw new ConflictException("El período ya está cerrado");
@@ -112,7 +112,13 @@ public class PayrollPeriodCloseService extends PayrollCloseTemplate {
 
     @Override
     protected void persistPayslip(UUID companyId, Employee emp, PayrollPeriod period, PayslipCalculation calc) {
-        Payslip payslip = PayslipFactory.normal(companyId, emp, period, calc);
+        // Actualiza en vez de insertar si ya existe un NORMAL para este
+        // empleado+período (ej. al volver a cerrar tras una reapertura) — evita
+        // dejar Payslips duplicados (issue #147).
+        Payslip payslip = payslipRepository
+                .findNormalByCompanyIdAndEmployeeIdAndPayrollPeriodId(companyId, emp.getId(), period.getId())
+                .orElseGet(() -> PayslipFactory.normal(companyId, emp, period, calc));
+        PayslipFactory.applySnapshot(payslip, calc);
         payslip.setEstado(EstadoRecibo.PAGADO);
         payslip.setFechaPago(LocalDate.now());
         payslipRepository.save(payslip);
