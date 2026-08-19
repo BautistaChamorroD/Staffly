@@ -8,6 +8,8 @@ import { ButtonDirective } from '../../../../shared/components/button/button.dir
 import { InputComponent } from '../../../../shared/components/input/input.component';
 import { ModalComponent } from '../../../../shared/components/modal/modal.component';
 import { SelectComponent, SelectOption } from '../../../../shared/components/select/select.component';
+import { Availability, DIA_SEMANA_LABELS, DIA_SEMANA_ORDER, DiaSemana } from '../../../availability/models/availability';
+import { AvailabilityService } from '../../../availability/services/availability.service';
 import { Branch } from '../../../branches/models/branch';
 import { BranchService } from '../../../branches/services/branch.service';
 import { Employee } from '../../../employees/models/employee';
@@ -54,6 +56,11 @@ function pad2(n: number): string {
   return String(n).padStart(2, '0');
 }
 
+/** Mapea Date.getDay() (0=domingo..6=sábado) al enum DiaSemana del backend. */
+function jsDayToDiaSemana(dow: number): DiaSemana {
+  return dow === 0 ? 'DOMINGO' : DIA_SEMANA_ORDER[dow - 1];
+}
+
 @Component({
   selector: 'app-schedule-builder',
   standalone: true,
@@ -65,6 +72,7 @@ export class ScheduleBuilderComponent implements OnInit {
   private employeeService = inject(EmployeeService);
   private branchService = inject(BranchService);
   private leaveRequestService = inject(LeaveRequestService);
+  private availabilityService = inject(AvailabilityService);
   private authService = inject(AuthService);
   private fb = inject(FormBuilder);
   private destroyRef = inject(DestroyRef);
@@ -102,6 +110,9 @@ export class ScheduleBuilderComponent implements OnInit {
     fechaHoraFin: ['', Validators.required],
     tipoTurno: ['FIJO', Validators.required],
   });
+
+  slotEmployeeAvailability: Availability[] = [];
+  slotAvailabilityLoading = false;
 
   selectedSchedule: Schedule | null = null;
   deleteError: string | null = null;
@@ -209,6 +220,46 @@ export class ScheduleBuilderComponent implements OnInit {
       .get('branchId')!
       .valueChanges.pipe(distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.loadSchedules());
+
+    this.slotForm
+      .get('employeeId')!
+      .valueChanges.pipe(distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
+      .subscribe((employeeId) => this.loadSlotEmployeeAvailability(employeeId));
+  }
+
+  private loadSlotEmployeeAvailability(employeeId: string | null): void {
+    this.slotEmployeeAvailability = [];
+    if (!employeeId) return;
+    this.slotAvailabilityLoading = true;
+    this.availabilityService.list(employeeId).subscribe({
+      next: (availability) => {
+        this.slotEmployeeAvailability = availability;
+        this.slotAvailabilityLoading = false;
+      },
+      error: () => { this.slotAvailabilityLoading = false; },
+    });
+  }
+
+  /** Franjas de disponibilidad declarada del empleado seleccionado para el día del turno (referencia visual, no bloqueante). */
+  get slotDayAvailability(): Availability[] {
+    const raw = this.slotForm.getRawValue();
+    if (!raw.fechaHoraInicio) return [];
+    const date = new Date(raw.fechaHoraInicio);
+    if (isNaN(date.getTime())) return [];
+    const dia = jsDayToDiaSemana(date.getDay());
+    return this.slotEmployeeAvailability.filter((a) => a.diaSemana === dia);
+  }
+
+  get slotDayLabel(): string {
+    const raw = this.slotForm.getRawValue();
+    if (!raw.fechaHoraInicio) return '';
+    const date = new Date(raw.fechaHoraInicio);
+    if (isNaN(date.getTime())) return '';
+    return DIA_SEMANA_LABELS[jsDayToDiaSemana(date.getDay())];
+  }
+
+  formatAvailabilitySlot(a: Availability): string {
+    return `${a.horaInicio.slice(0, 5)} — ${a.horaFin.slice(0, 5)}`;
   }
 
   loadSchedules(): void {
@@ -345,6 +396,7 @@ export class ScheduleBuilderComponent implements OnInit {
     this.formOpen = true;
     this.formDay = day ?? this.currentWeekStart;
     this.formError = null;
+    this.slotEmployeeAvailability = [];
     const dayStr = toIsoDate(this.formDay);
     this.slotForm.reset({
       employeeId: '',
