@@ -82,4 +82,26 @@ public interface ScheduleRepository extends JpaRepository<Schedule, UUID> {
             @Param("employeeId") UUID employeeId,
             @Param("desde") LocalDateTime desde,
             @Param("hasta") LocalDateTime hasta);
+
+    /**
+     * Turnos CUMPLIDO de toda la empresa para el reporte de horas trabajadas
+     * (AUD-30 / issue #151) — companyId siempre requerido, branchId/desde/hasta
+     * opcionales (null = sin ese filtro).
+     */
+    @Query("""
+        SELECT s FROM Schedule s
+        JOIN FETCH s.employee
+        JOIN FETCH s.branch
+        WHERE s.companyId = :companyId
+          AND s.estado = com.staffly.backend.schedule.EstadoTurno.CUMPLIDO
+          AND (:branchId IS NULL OR s.branch.id = :branchId)
+          AND (:desde IS NULL OR s.fechaHoraInicio >= :desde)
+          AND (:hasta IS NULL OR s.fechaHoraInicio <= :hasta)
+        ORDER BY s.employee.id, s.fechaHoraInicio
+    """)
+    List<Schedule> findCumplidosForReport(
+            @Param("companyId") UUID companyId,
+            @Param("branchId") UUID branchId,
+            @Param("desde") LocalDateTime desde,
+            @Param("hasta") LocalDateTime hasta);
 }
