@@ -14,7 +14,7 @@ export interface LeaveRequest {
   employeeNombre: string;
   employeeApellido: string;
   leaveTypeId: string;
-  leaveTypeName: string;
+  leaveTypeNombre: string;
   fechaInicio: string;
   fechaFin: string;
   motivo: string | null;

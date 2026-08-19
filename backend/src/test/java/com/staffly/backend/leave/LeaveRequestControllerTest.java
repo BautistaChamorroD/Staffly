@@ -171,6 +171,8 @@ class LeaveRequestControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.estado").value("PENDIENTE"))
                 .andExpect(jsonPath("$.employeeId").value(empA1.getId().toString()))
+                .andExpect(jsonPath("$.employeeNombre").value("Juan"))
+                .andExpect(jsonPath("$.employeeApellido").value("Pérez"))
                 .andExpect(jsonPath("$.leaveTypeNombre").value("Vacaciones"))
                 .andExpect(jsonPath("$.fechaInicio").value("2026-09-01"))
                 .andExpect(jsonPath("$.fechaFin").value("2026-09-05"));

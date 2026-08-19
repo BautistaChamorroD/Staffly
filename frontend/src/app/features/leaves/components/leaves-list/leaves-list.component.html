@@ -68,7 +68,7 @@
               @if (canManage) {
                 <p class="font-semibold text-brand-ink">{{ req.employeeNombre }} {{ req.employeeApellido }}</p>
               }
-              <p class="text-sm font-medium text-brand-ink">{{ req.leaveTypeName }}</p>
+              <p class="text-sm font-medium text-brand-ink">{{ req.leaveTypeNombre }}</p>
               <p class="text-sm text-brand-muted">{{ req.fechaInicio }} — {{ req.fechaFin }}</p>
               @if (req.motivo) {
                 <p class="mt-1 text-xs text-brand-muted">{{ req.motivo }}</p>
@@ -169,7 +169,7 @@
     <p class="mb-4 text-sm text-brand-ink">
       Vas a rechazar la solicitud de licencia de
       <strong>{{ rejectTarget.employeeNombre }} {{ rejectTarget.employeeApellido }}</strong>
-      ({{ rejectTarget.leaveTypeName }}, {{ rejectTarget.fechaInicio }} — {{ rejectTarget.fechaFin }}).
+      ({{ rejectTarget.leaveTypeNombre }}, {{ rejectTarget.fechaInicio }} — {{ rejectTarget.fechaFin }}).
     </p>
     <form [formGroup]="rejectForm">
       <ui-input
@@ -195,7 +195,7 @@
     }
     <p class="text-sm text-brand-ink">
       ¿Confirmás que querés cancelar tu solicitud de
-      <strong>{{ cancelTarget.leaveTypeName }}</strong>
+      <strong>{{ cancelTarget.leaveTypeNombre }}</strong>
       del <strong>{{ cancelTarget.fechaInicio }}</strong> al <strong>{{ cancelTarget.fechaFin }}</strong>?
     </p>
     <div class="mt-6 flex justify-end gap-2">

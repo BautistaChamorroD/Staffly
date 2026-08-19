@@ -9,6 +9,8 @@ import java.util.UUID;
 public record LeaveRequestResponse(
         UUID id,
         UUID employeeId,
+        String employeeNombre,
+        String employeeApellido,
         UUID leaveTypeId,
         String leaveTypeNombre,
         LocalDate fechaInicio,
@@ -21,6 +23,8 @@ public record LeaveRequestResponse(
         return new LeaveRequestResponse(
                 lr.getId(),
                 lr.getEmployeeId(),
+                lr.getEmployee().getNombre(),
+                lr.getEmployee().getApellido(),
                 lr.getLeaveType().getId(),
                 lr.getLeaveType().getNombre(),
                 lr.getFechaInicio(),
