@@ -231,11 +231,11 @@
       </div>
       <div class="text-brand-muted">
         <span class="font-medium text-brand-ink">Tipo:</span>
-        {{ selectedSchedule.tipoTurno === 'FIJO' ? 'Fijo' : 'Rotativo' }}
+        {{ tipoTurnoLabels[selectedSchedule.tipoTurno] }}
       </div>
       <div class="text-brand-muted">
         <span class="font-medium text-brand-ink">Estado:</span>
-        {{ selectedSchedule.estado }}
+        {{ estadoTurnoLabels[selectedSchedule.estado] }}
       </div>
       @if (selectedSchedule.warning === 'OUT_OF_AVAILABILITY') {
         <div class="rounded bg-badge-warning-bg p-2 text-xs text-badge-warning-ink">

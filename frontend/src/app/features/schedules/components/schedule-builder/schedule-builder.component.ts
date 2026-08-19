@@ -12,6 +12,7 @@ import { Availability, DIA_SEMANA_LABELS, DIA_SEMANA_ORDER, DiaSemana } from '..
 import { AvailabilityService } from '../../../availability/services/availability.service';
 import { Branch } from '../../../branches/models/branch';
 import { BranchService } from '../../../branches/services/branch.service';
+import { ESTADO_TURNO_LABELS, TIPO_TURNO_LABELS } from '../../../../core/i18n/strings';
 import { Employee } from '../../../employees/models/employee';
 import { EmployeeService } from '../../../employees/services/employee.service';
 import { LeaveRequest } from '../../../leaves/models/leave';
@@ -85,6 +86,8 @@ export class ScheduleBuilderComponent implements OnInit {
     { value: 'FIJO', label: 'Fijo' },
     { value: 'ROTATIVO', label: 'Rotativo' },
   ];
+  readonly estadoTurnoLabels = ESTADO_TURNO_LABELS;
+  readonly tipoTurnoLabels = TIPO_TURNO_LABELS;
 
   branches: Branch[] = [];
   employees: Employee[] = [];
@@ -364,7 +367,7 @@ export class ScheduleBuilderComponent implements OnInit {
 
   continuationFromTime(s: Schedule): string {
     const start = new Date(s.fechaHoraInicio);
-    return `${pad2(start.getHours())}:${pad2(start.getMinutes())}`;
+    return `${DAY_NAMES[start.getDay()]} ${pad2(start.getHours())}:${pad2(start.getMinutes())}hs`;
   }
 
   formatEndTime(s: Schedule): string {
