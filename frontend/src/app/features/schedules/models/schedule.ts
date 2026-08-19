@@ -21,6 +21,27 @@ export interface CreateScheduleRequest {
   tipoTurno: TipoTurno;
 }
 
+export interface UpdateScheduleRequest {
+  branchId?: string;
+  fechaHoraInicio?: string;
+  fechaHoraFin?: string;
+  tipoTurno?: TipoTurno;
+}
+
+export interface UpdateStatusRequest {
+  estado: 'CUMPLIDO' | 'AUSENTE';
+}
+
+export interface DuplicateWeeklyRequest {
+  mesObjetivo: number;
+  anioObjetivo: number;
+}
+
+export interface DuplicateWeeklyResponse {
+  turnosCreados: Schedule[];
+  advertencia: string | null;
+}
+
 export interface ScheduleFilters {
   employeeId?: string;
   branchId?: string;

@@ -4,7 +4,15 @@ import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
 import { environment } from '../../../../environments/environment';
-import { CreateScheduleRequest, Schedule, ScheduleFilters } from '../models/schedule';
+import {
+  CreateScheduleRequest,
+  DuplicateWeeklyRequest,
+  DuplicateWeeklyResponse,
+  Schedule,
+  ScheduleFilters,
+  UpdateScheduleRequest,
+  UpdateStatusRequest,
+} from '../models/schedule';
 
 @Injectable({ providedIn: 'root' })
 export class ScheduleService {
@@ -28,5 +36,21 @@ export class ScheduleService {
 
   delete(id: string): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${id}`);
+  }
+
+  update(id: string, request: UpdateScheduleRequest): Observable<Schedule> {
+    return this.http.patch<Schedule>(`${this.baseUrl}/${id}`, request);
+  }
+
+  confirm(id: string): Observable<Schedule> {
+    return this.http.post<Schedule>(`${this.baseUrl}/${id}/confirm`, null);
+  }
+
+  updateStatus(id: string, request: UpdateStatusRequest): Observable<Schedule> {
+    return this.http.patch<Schedule>(`${this.baseUrl}/${id}/status`, request);
+  }
+
+  duplicateWeekly(id: string, request: DuplicateWeeklyRequest): Observable<DuplicateWeeklyResponse> {
+    return this.http.post<DuplicateWeeklyResponse>(`${this.baseUrl}/${id}/duplicate-weekly`, request);
   }
 }
