@@ -291,11 +291,13 @@ class LeaveRequestControllerTest {
     @Test
     void approveHappyPath() throws Exception {
         String id = createLeaveRequest(adminAToken, empA1.getId(), "2026-09-01", "2026-09-05");
+        UUID adminAId = userRepository.findByEmail("admin-a@empresa-a.com").orElseThrow().getId();
 
         mockMvc.perform(post(BASE_URL + "/" + id + "/approve")
                         .header("Authorization", "Bearer " + adminAToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.estado").value("APROBADA"));
+                .andExpect(jsonPath("$.estado").value("APROBADA"))
+                .andExpect(jsonPath("$.aprobadoPorId").value(adminAId.toString()));
     }
 
     @Test
