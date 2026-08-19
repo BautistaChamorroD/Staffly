@@ -8,7 +8,9 @@ import com.staffly.backend.employee.EmployeeRepository;
 import com.staffly.backend.leave.dto.CreateLeaveRequestRequest;
 import com.staffly.backend.leave.dto.LeaveRequestResponse;
 import com.staffly.backend.leave.dto.RejectLeaveRequestRequest;
+import com.staffly.backend.schedule.Schedule;
 import com.staffly.backend.schedule.ScheduleRepository;
+import com.staffly.backend.schedule.dto.ScheduleResponse;
 import com.staffly.backend.security.Rol;
 import com.staffly.backend.security.StafflyUserPrincipal;
 import com.staffly.backend.user.UserRepository;
@@ -108,11 +110,12 @@ public class LeaveRequestService {
         // verificar solapamiento con turnos existentes antes de confirmar
         LocalDateTime inicio = lr.getFechaInicio().atStartOfDay();
         LocalDateTime fin = lr.getFechaFin().plusDays(1).atStartOfDay();
-        List<UUID> conflictos = scheduleRepository.findAllConflictingIdsInRange(
+        List<Schedule> conflictos = scheduleRepository.findAllConflictingInRange(
                 principal.getCompanyId(), lr.getEmployeeId(), inicio, fin);
 
         if (!conflictos.isEmpty()) {
-            throw new LeaveApprovalConflictException(conflictos);
+            throw new LeaveApprovalConflictException(
+                    conflictos.stream().map(ScheduleResponse::from).toList());
         }
 
         lr.setEstado(EstadoLicencia.APROBADA);
