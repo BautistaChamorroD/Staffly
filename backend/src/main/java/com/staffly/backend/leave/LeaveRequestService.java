@@ -63,8 +63,16 @@ public class LeaveRequestService {
                 .filter(lr -> employeeIdFilter == null || lr.getEmployeeId().equals(employeeIdFilter))
                 .filter(lr -> estadoFilter == null || lr.getEstado() == estadoFilter)
                 .sorted(java.util.Comparator.comparing(LeaveRequest::getFechaInicio))
-                .map(LeaveRequestResponse::from)
+                .map(lr -> LeaveRequestResponse.from(lr, hasScheduleConflict(lr, companyId)))
                 .collect(Collectors.toList());
+    }
+
+    /** Misma semántica que la verificación de approve(): solo aplica a solicitudes PENDIENTE. */
+    private boolean hasScheduleConflict(LeaveRequest lr, UUID companyId) {
+        if (lr.getEstado() != EstadoLicencia.PENDIENTE) return false;
+        LocalDateTime inicio = lr.getFechaInicio().atStartOfDay();
+        LocalDateTime fin = lr.getFechaFin().plusDays(1).atStartOfDay();
+        return !scheduleRepository.findAllConflictingInRange(companyId, lr.getEmployeeId(), inicio, fin).isEmpty();
     }
 
     @Transactional(readOnly = true)

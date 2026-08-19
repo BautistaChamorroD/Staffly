@@ -73,6 +73,11 @@
               @if (req.motivo) {
                 <p class="mt-1 text-xs text-brand-muted">{{ req.motivo }}</p>
               }
+              @if (canManage && req.tieneConflicto) {
+                <p class="mt-1 text-xs font-medium text-badge-warning-ink">
+                  ⚠ Se superpone con un turno ya asignado del empleado.
+                </p>
+              }
             </div>
             <ui-badge [variant]="estadoBadge(req.estado)">{{ ESTADO_LICENCIA_LABELS[req.estado] }}</ui-badge>
           </header>
