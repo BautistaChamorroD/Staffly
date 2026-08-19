@@ -89,6 +89,24 @@ class PayslipPdfControllerTest {
     }
 
     @Test
+    void pdfGeneratesWithHorasExtraYFeriadoSimultaneas() throws Exception {
+        // AUD-25 / issue #130: ejercita las ramas de horasExtra>0 y horasFeriado>0 del
+        // PDF al mismo tiempo — antes de este fix, OpenPdfPayslipAdapter tenía 45.8% de
+        // cobertura de ramas porque ningún fixture pasaba por acá.
+        Payslip p = createPayslipConExtraYFeriado(companyAId, empA1, periodA);
+        entityManager.flush();
+
+        byte[] body = mockMvc.perform(get(BASE_URL + "/" + p.getId() + "/pdf")
+                        .header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "application/pdf"))
+                .andReturn().getResponse().getContentAsByteArray();
+
+        assertThat(body).isNotEmpty();
+        assertThat(new String(body, 0, 4)).isEqualTo("%PDF");
+    }
+
+    @Test
     void rrhhCanDownloadPdf() throws Exception {
         Payslip p = createPayslip(companyAId, empA1, periodA, EstadoRecibo.GENERADO);
         entityManager.flush();
@@ -186,6 +204,7 @@ class PayslipPdfControllerTest {
                 emp.getId(), period.getId(),
                 emp.getSueldoBase(), BigDecimal.valueOf(500),
                 BigDecimal.valueOf(160), BigDecimal.ZERO, BigDecimal.ZERO,
+                BigDecimal.valueOf(80_000), BigDecimal.ZERO, BigDecimal.ZERO,
                 BigDecimal.valueOf(80_000), BigDecimal.ZERO, BigDecimal.valueOf(80_000),
                 List.of(), BigDecimal.ZERO, List.of(), BigDecimal.ZERO,
                 BigDecimal.valueOf(80_000)
@@ -193,6 +212,22 @@ class PayslipPdfControllerTest {
         Payslip p = PayslipFactory.normal(companyId, emp, period, calc);
         p.setEstado(estado);
         if (estado == EstadoRecibo.PAGADO) p.setFechaPago(LocalDate.of(2026, 6, 30));
+        entityManager.persist(p); entityManager.flush();
+        return p;
+    }
+
+    private Payslip createPayslipConExtraYFeriado(UUID companyId, Employee emp, PayrollPeriod period) {
+        PayslipCalculation calc = new PayslipCalculation(
+                emp.getId(), period.getId(),
+                emp.getSueldoBase(), BigDecimal.valueOf(500),
+                BigDecimal.valueOf(160), BigDecimal.valueOf(10), BigDecimal.valueOf(8),
+                BigDecimal.valueOf(80_000), BigDecimal.valueOf(7_500), BigDecimal.valueOf(8_000),
+                BigDecimal.valueOf(95_500), BigDecimal.ZERO, BigDecimal.valueOf(95_500),
+                List.of(), BigDecimal.ZERO, List.of(), BigDecimal.ZERO,
+                BigDecimal.valueOf(95_500)
+        );
+        Payslip p = PayslipFactory.normal(companyId, emp, period, calc);
+        p.setEstado(EstadoRecibo.GENERADO);
         entityManager.persist(p); entityManager.flush();
         return p;
     }

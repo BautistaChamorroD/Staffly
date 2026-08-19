@@ -22,8 +22,9 @@ export interface Payslip {
   horasNormales: number;
   horasExtra: number;
   horasFeriado: number;
-  montoHorasExtra?: number;
-  montoHorasFeriado?: number;
+  montoHorasNormales: number;
+  montoHorasExtra: number;
+  montoHorasFeriado: number;
   brutoCalculado: number;
   detalleDescuentos: DeduccionLinea[];
   totalDeducciones: number;

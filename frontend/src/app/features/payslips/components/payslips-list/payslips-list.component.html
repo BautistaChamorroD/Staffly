@@ -66,23 +66,19 @@
                 @if (p.horasNormales > 0) {
                   <li class="flex justify-between">
                     <span class="text-brand-ink">Horas normales ({{ p.horasNormales | number: '1.0-1' }} hs)</span>
-                    <span class="tabular-nums text-brand-ink">$ {{ p.sueldoBase | number: '1.2-2' }}</span>
+                    <span class="tabular-nums text-brand-ink">$ {{ p.montoHorasNormales | number: '1.2-2' }}</span>
                   </li>
                 }
                 @if (p.horasExtra > 0) {
                   <li class="flex justify-between">
                     <span class="text-brand-ink">Horas extra ({{ p.horasExtra | number: '1.0-1' }} hs)</span>
-                    <span class="tabular-nums text-brand-ink">
-                      @if (p.montoHorasExtra != null) { $ {{ p.montoHorasExtra | number: '1.2-2' }} } @else { — }
-                    </span>
+                    <span class="tabular-nums text-brand-ink">$ {{ p.montoHorasExtra | number: '1.2-2' }}</span>
                   </li>
                 }
                 @if (p.horasFeriado > 0) {
                   <li class="flex justify-between">
                     <span class="text-brand-ink">Horas feriado ({{ p.horasFeriado | number: '1.0-1' }} hs)</span>
-                    <span class="tabular-nums text-brand-ink">
-                      @if (p.montoHorasFeriado != null) { $ {{ p.montoHorasFeriado | number: '1.2-2' }} } @else { — }
-                    </span>
+                    <span class="tabular-nums text-brand-ink">$ {{ p.montoHorasFeriado | number: '1.2-2' }}</span>
                   </li>
                 }
                 <li class="flex justify-between border-t border-brand-line pt-1.5 font-medium">

@@ -21,6 +21,10 @@ public record PayslipCalculation(
         BigDecimal horasExtra,
         BigDecimal horasFeriado,
 
+        BigDecimal montoHorasNormales,
+        BigDecimal montoHorasExtra,
+        BigDecimal montoHorasFeriado,
+
         BigDecimal brutoHoras,
         BigDecimal ajusteLicencias,
         BigDecimal brutoCalculado,

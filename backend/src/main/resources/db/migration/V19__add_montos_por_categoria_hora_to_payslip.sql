@@ -1,0 +1,3 @@
+ALTER TABLE payslip ADD COLUMN monto_horas_normales NUMERIC(14, 2) NOT NULL DEFAULT 0;
+ALTER TABLE payslip ADD COLUMN monto_horas_extra     NUMERIC(14, 2) NOT NULL DEFAULT 0;
+ALTER TABLE payslip ADD COLUMN monto_horas_feriado   NUMERIC(14, 2) NOT NULL DEFAULT 0;

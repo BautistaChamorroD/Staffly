@@ -130,10 +130,16 @@ public final class PayslipBuilder {
             totalExtra  = totalExtra.add(bd.overtimeHours());
         }
 
-        BigDecimal brutoHoras = totalNormal.multiply(valorHora)
-                .add(totalExtra.multiply(valorHora).multiply(config.getMultiplicadorHoraExtra()))
-                .add(totalFeriado.multiply(valorHora).multiply(config.getMultiplicadorFeriado()))
+        BigDecimal montoHorasNormales = totalNormal.multiply(valorHora)
                 .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal montoHorasExtra = totalExtra.multiply(valorHora)
+                .multiply(config.getMultiplicadorHoraExtra())
+                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal montoHorasFeriado = totalFeriado.multiply(valorHora)
+                .multiply(config.getMultiplicadorFeriado())
+                .setScale(2, RoundingMode.HALF_UP);
+
+        BigDecimal brutoHoras = montoHorasNormales.add(montoHorasExtra).add(montoHorasFeriado);
 
         // ── Paso 2: licencias aprobadas ───────────────────────────────────────
         BigDecimal ajusteLicencias = BigDecimal.ZERO;
@@ -189,6 +195,9 @@ public final class PayslipBuilder {
                 totalNormal.setScale(2, RoundingMode.HALF_UP),
                 totalExtra.setScale(2, RoundingMode.HALF_UP),
                 totalFeriado.setScale(2, RoundingMode.HALF_UP),
+                montoHorasNormales,
+                montoHorasExtra,
+                montoHorasFeriado,
                 brutoHoras,
                 ajusteLicencias,
                 brutoCalculado,

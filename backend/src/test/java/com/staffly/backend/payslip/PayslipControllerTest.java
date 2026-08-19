@@ -264,6 +264,7 @@ class PayslipControllerTest {
                 emp.getId(), period.getId(),
                 emp.getSueldoBase(), BigDecimal.valueOf(500),
                 BigDecimal.valueOf(160), BigDecimal.ZERO, BigDecimal.ZERO,
+                BigDecimal.valueOf(80_000), BigDecimal.ZERO, BigDecimal.ZERO,
                 BigDecimal.valueOf(80_000), BigDecimal.ZERO, BigDecimal.valueOf(80_000),
                 List.of(), BigDecimal.ZERO,
                 List.of(), BigDecimal.ZERO,

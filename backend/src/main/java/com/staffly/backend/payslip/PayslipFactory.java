@@ -39,6 +39,9 @@ public final class PayslipFactory {
         p.setHorasNormales(calc.horasNormales());
         p.setHorasExtra(calc.horasExtra());
         p.setHorasFeriado(calc.horasFeriado());
+        p.setMontoHorasNormales(calc.montoHorasNormales());
+        p.setMontoHorasExtra(calc.montoHorasExtra());
+        p.setMontoHorasFeriado(calc.montoHorasFeriado());
         p.setBrutoCalculado(calc.brutoCalculado());
         p.setTotalDeducciones(calc.totalDeducciones());
         p.setTotalAdelantos(calc.totalAdelantos());
