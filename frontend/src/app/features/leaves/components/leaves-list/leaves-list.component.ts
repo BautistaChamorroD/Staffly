@@ -328,7 +328,11 @@ export class LeavesListComponent implements OnInit {
   canCancel(req: LeaveRequest): boolean {
     if (this.role === 'SUPERVISOR') return false;
     if (req.estado !== 'PENDIENTE' && req.estado !== 'APROBADA') return false;
-    const today = new Date().toISOString().split('T')[0];
+    // fecha de "hoy" en la zona horaria local del navegador — toISOString() da la
+    // fecha en UTC, que en tenants con offset negativo (ej. ART, UTC-3) ya está
+    // adelantada al día siguiente entre las 21:00 y las 23:59 hora local.
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     return req.fechaInicio > today;
   }
 
