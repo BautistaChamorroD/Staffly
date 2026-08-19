@@ -348,8 +348,11 @@ export class ScheduleBuilderComponent implements OnInit {
     };
 
     this.scheduleService.create(request).subscribe({
-      next: () => {
+      next: (created) => {
         this.formOpen = false;
+        // feedback inmediato con la respuesta real (incluye warning ya calculado);
+        // loadSchedules() igual se llama para mantener sincronizado el resto de la grilla
+        this.schedules = [...this.schedules, created];
         this.loadSchedules();
       },
       error: () => {

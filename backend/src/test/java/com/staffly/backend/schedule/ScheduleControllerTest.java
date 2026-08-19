@@ -337,11 +337,22 @@ class ScheduleControllerTest {
                 "fechaHoraInicio", "2026-07-06T09:00:00",
                 "fechaHoraFin", "2026-07-06T17:00:00",
                 "tipoTurno", "FIJO"));
-        mockMvc.perform(post(BASE_URL)
+        String resp = mockMvc.perform(post(BASE_URL)
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType("application/json").content(body))
                 .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.warning").value("OUT_OF_AVAILABILITY"))
+                .andReturn().getResponse().getContentAsString();
+        UUID id = UUID.fromString(objectMapper.readTree(resp).get("id").asText());
+
+        // AUD-08: el warning debe persistir (recalculado) también en lectura, no solo en la respuesta de create
+        mockMvc.perform(get(BASE_URL + "/" + id).header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
                 .andExpect(jsonPath("$.warning").value("OUT_OF_AVAILABILITY"));
+
+        mockMvc.perform(get(BASE_URL).header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].warning").value("OUT_OF_AVAILABILITY"));
     }
 
     @Test

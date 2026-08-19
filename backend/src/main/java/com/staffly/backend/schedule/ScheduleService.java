@@ -88,7 +88,7 @@ public class ScheduleService {
                 .filter(s -> principal.getRol() != Rol.SUPERVISOR
                         || principal.getBranchIds().contains(s.getBranch().getId()))
                 .sorted(Comparator.comparing(Schedule::getFechaHoraInicio))
-                .map(ScheduleResponse::from)
+                .map(s -> ScheduleResponse.from(s, checkDisponibilidad(s, principal.getCompanyId())))
                 .toList();
     }
 
@@ -142,7 +142,7 @@ public class ScheduleService {
                 && !principal.getBranchIds().contains(schedule.getBranch().getId())) {
             throw new ResourceNotFoundException("No se encontró el turno solicitado");
         }
-        return ScheduleResponse.from(schedule);
+        return ScheduleResponse.from(schedule, checkDisponibilidad(schedule, principal.getCompanyId()));
     }
 
     @Transactional
