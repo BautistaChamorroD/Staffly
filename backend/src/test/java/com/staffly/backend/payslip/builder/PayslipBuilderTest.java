@@ -136,6 +136,29 @@ class PayslipBuilderTest {
     }
 
     @Test
+    void montosPorCategoriaDeHora_horaExtraYFeriadoSimultaneas() {
+        // AUD-25 / issue #130: cada categoría de hora debe traer su propio monto,
+        // no reusar sueldoBase/brutoCalculado como aproximación.
+        LocalDate feriado = LocalDate.of(2026, 8, 25);
+        List<Schedule> schedules = List.of(
+                shift(2026, 8, 4, 8, 0, 18, 0),   // 10h en día normal → 8 normal + 2 extra
+                shift(2026, 8, 25, 9, 0, 17, 0)   // 8h en feriado
+        );
+        PayslipCalculation result = builder()
+                .withSchedules(schedules)
+                .withHolidays(List.of(feriado))
+                .build();
+
+        // valorHora = 200000/200 = 1000
+        assertEquals(bd("8000.00"), result.montoHorasNormales());   // 8 × 1000
+        assertEquals(bd("3000.00"), result.montoHorasExtra());      // 2 × 1000 × 1.5
+        assertEquals(bd("16000.00"), result.montoHorasFeriado());   // 8 × 1000 × 2.0
+        // la suma de las 3 categorías debe coincidir con el bruto de horas
+        assertEquals(result.brutoHoras(),
+                result.montoHorasNormales().add(result.montoHorasExtra()).add(result.montoHorasFeriado()));
+    }
+
+    @Test
     void turnosFeriadoYNormal_combinados() {
         LocalDate feriado = LocalDate.of(2026, 8, 25);
         List<Schedule> schedules = List.of(

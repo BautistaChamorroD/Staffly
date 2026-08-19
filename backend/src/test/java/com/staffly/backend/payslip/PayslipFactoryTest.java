@@ -49,6 +49,7 @@ class PayslipFactoryTest {
                 BigDecimal.valueOf(150_000),
                 BigDecimal.valueOf(750),
                 BigDecimal.valueOf(160), BigDecimal.valueOf(4), BigDecimal.ZERO,
+                BigDecimal.valueOf(120_000), BigDecimal.valueOf(3_000), BigDecimal.ZERO,
                 BigDecimal.valueOf(123_000), BigDecimal.ZERO, BigDecimal.valueOf(123_000),
                 List.of(), BigDecimal.ZERO,
                 List.of(), BigDecimal.ZERO,
@@ -87,6 +88,9 @@ class PayslipFactoryTest {
         assertEquals(BigDecimal.valueOf(160),     p.getHorasNormales());
         assertEquals(BigDecimal.valueOf(4),       p.getHorasExtra());
         assertEquals(BigDecimal.ZERO,             p.getHorasFeriado());
+        assertEquals(BigDecimal.valueOf(120_000), p.getMontoHorasNormales());
+        assertEquals(BigDecimal.valueOf(3_000),   p.getMontoHorasExtra());
+        assertEquals(BigDecimal.ZERO,              p.getMontoHorasFeriado());
         assertEquals(BigDecimal.valueOf(123_000), p.getBrutoCalculado());
         assertEquals(BigDecimal.ZERO,             p.getTotalDeducciones());
         assertEquals(BigDecimal.ZERO,             p.getTotalAdelantos());

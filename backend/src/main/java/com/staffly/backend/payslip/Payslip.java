@@ -55,6 +55,15 @@ public class Payslip extends TenantAwareEntity {
     @Column(name = "horas_feriado", nullable = false, precision = 10, scale = 2)
     private BigDecimal horasFeriado;
 
+    @Column(name = "monto_horas_normales", nullable = false, precision = 14, scale = 2)
+    private BigDecimal montoHorasNormales;
+
+    @Column(name = "monto_horas_extra", nullable = false, precision = 14, scale = 2)
+    private BigDecimal montoHorasExtra;
+
+    @Column(name = "monto_horas_feriado", nullable = false, precision = 14, scale = 2)
+    private BigDecimal montoHorasFeriado;
+
     @Column(name = "bruto_calculado", nullable = false, precision = 14, scale = 2)
     private BigDecimal brutoCalculado;
 
@@ -115,6 +124,15 @@ public class Payslip extends TenantAwareEntity {
 
     public BigDecimal getHorasFeriado() { return horasFeriado; }
     public void setHorasFeriado(BigDecimal horasFeriado) { this.horasFeriado = horasFeriado; }
+
+    public BigDecimal getMontoHorasNormales() { return montoHorasNormales; }
+    public void setMontoHorasNormales(BigDecimal montoHorasNormales) { this.montoHorasNormales = montoHorasNormales; }
+
+    public BigDecimal getMontoHorasExtra() { return montoHorasExtra; }
+    public void setMontoHorasExtra(BigDecimal montoHorasExtra) { this.montoHorasExtra = montoHorasExtra; }
+
+    public BigDecimal getMontoHorasFeriado() { return montoHorasFeriado; }
+    public void setMontoHorasFeriado(BigDecimal montoHorasFeriado) { this.montoHorasFeriado = montoHorasFeriado; }
 
     public BigDecimal getBrutoCalculado() { return brutoCalculado; }
     public void setBrutoCalculado(BigDecimal brutoCalculado) { this.brutoCalculado = brutoCalculado; }

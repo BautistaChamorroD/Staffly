@@ -136,13 +136,13 @@ public class OpenPdfPayslipAdapter implements PdfExportAdapter<PayslipPdfData> {
         addTableHeaderRow(table, "Concepto", "Importe");
 
         if (d.horasNormales().compareTo(BigDecimal.ZERO) > 0) {
-            addTableRow(table, "Horas normales (" + d.horasNormales().toPlainString() + " hs)", "$ " + money(d.brutoCalculado()));
+            addTableRow(table, "Horas normales (" + d.horasNormales().toPlainString() + " hs)", "$ " + money(d.montoHorasNormales()));
         }
         if (d.horasExtra().compareTo(BigDecimal.ZERO) > 0) {
-            addTableRow(table, "Horas extra (" + d.horasExtra().toPlainString() + " hs)", "");
+            addTableRow(table, "Horas extra (" + d.horasExtra().toPlainString() + " hs)", "$ " + money(d.montoHorasExtra()));
         }
         if (d.horasFeriado().compareTo(BigDecimal.ZERO) > 0) {
-            addTableRow(table, "Horas feriado (" + d.horasFeriado().toPlainString() + " hs)", "");
+            addTableRow(table, "Horas feriado (" + d.horasFeriado().toPlainString() + " hs)", "$ " + money(d.montoHorasFeriado()));
         }
         addTableRow(table, "Bruto calculado", "$ " + money(d.brutoCalculado()));
 
