@@ -89,9 +89,6 @@ public class LeaveRequestService {
         LeaveType leaveType = leaveTypeRepository.findByIdAndCompanyId(request.leaveTypeId(), companyId)
                 .orElseThrow(() -> new ResourceNotFoundException("No se encontró el tipo de licencia solicitado"));
 
-        if (!request.fechaFin().isAfter(request.fechaInicio()) && !request.fechaFin().isEqual(request.fechaInicio())) {
-            throw new BadRequestException("La fecha de fin debe ser igual o posterior a la fecha de inicio");
-        }
         if (request.fechaFin().isBefore(request.fechaInicio())) {
             throw new BadRequestException("La fecha de fin debe ser igual o posterior a la fecha de inicio");
         }
