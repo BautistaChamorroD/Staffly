@@ -18,9 +18,19 @@ public record LeaveRequestResponse(
         String motivo,
         EstadoLicencia estado,
         String motivoRechazo,
-        UUID aprobadoPorId) {
+        UUID aprobadoPorId,
+        boolean tieneConflicto) {
 
     public static LeaveRequestResponse from(LeaveRequest lr) {
+        return from(lr, false);
+    }
+
+    /**
+     * @param tieneConflicto true si, estando PENDIENTE, ya se superpone con un turno
+     *                       existente del empleado (misma semántica que approve()) —
+     *                       advertencia proactiva en la card antes de intentar aprobar.
+     */
+    public static LeaveRequestResponse from(LeaveRequest lr, boolean tieneConflicto) {
         return new LeaveRequestResponse(
                 lr.getId(),
                 lr.getEmployeeId(),
@@ -33,6 +43,7 @@ public record LeaveRequestResponse(
                 lr.getMotivo(),
                 lr.getEstado(),
                 lr.getMotivoRechazo(),
-                lr.getAprobadoPor());
+                lr.getAprobadoPor(),
+                tieneConflicto);
     }
 }

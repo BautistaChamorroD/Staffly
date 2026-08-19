@@ -256,6 +256,22 @@ class LeaveRequestControllerTest {
     }
 
     @Test
+    void listaMarcaTieneConflictoParaPendientesSuperpuestas() throws Exception {
+        // turno del empleado que se superpone con la licencia que vamos a crear
+        createSchedule(companyAId, empA1, branchA1,
+                LocalDateTime.of(2026, 9, 3, 8, 0),
+                LocalDateTime.of(2026, 9, 3, 16, 0));
+
+        String idConConflicto = createLeaveRequest(adminAToken, empA1.getId(), "2026-09-01", "2026-09-05");
+        String idSinConflicto = createLeaveRequest(adminAToken, empA2.getId(), "2026-10-01", "2026-10-03");
+
+        mockMvc.perform(get(BASE_URL).header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.id=='" + idConConflicto + "')].tieneConflicto").value(true))
+                .andExpect(jsonPath("$[?(@.id=='" + idSinConflicto + "')].tieneConflicto").value(false));
+    }
+
+    @Test
     void empleadoSoloVeLosSuyos() throws Exception {
         String empToken = createUserAndLogin(companyAId, "emp@empresa-a.com", RolUsuario.EMPLOYEE, null, empA1);
         createLeaveRequest(adminAToken, empA1.getId(), "2026-09-01", "2026-09-05");

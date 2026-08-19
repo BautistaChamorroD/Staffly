@@ -19,6 +19,7 @@ export interface LeaveRequest {
   motivo: string | null;
   estado: EstadoLicencia;
   aprobadoPorId: string | null;
+  tieneConflicto: boolean;
 }
 
 export interface CreateLeaveRequestBody {
