@@ -139,28 +139,39 @@ export class AdvancesListComponent implements OnInit {
   }
 
   reload(): void {
-    if (!this.canManage) {
-      this.loading = false;
-      return;
-    }
     this.loading = true;
     this.loadError = null;
-    forkJoin({
-      advances: this.advanceService.list(),
-      employees: this.employeeService.list(),
-      periods: this.periodService.list(),
-    }).subscribe({
-      next: ({ advances, employees, periods }) => {
-        this.advances = advances;
-        this.employees = employees;
-        this.periods = periods;
-        this.loading = false;
-      },
-      error: () => {
-        this.loading = false;
-        this.loadError = 'No se pudo cargar la información. Intentá de nuevo.';
-      },
-    });
+    if (this.canManage) {
+      forkJoin({
+        advances: this.advanceService.list(),
+        employees: this.employeeService.list(),
+        periods: this.periodService.list(),
+      }).subscribe({
+        next: ({ advances, employees, periods }) => {
+          this.advances = advances;
+          this.employees = employees;
+          this.periods = periods;
+          this.loading = false;
+        },
+        error: () => {
+          this.loading = false;
+          this.loadError = 'No se pudo cargar la información. Intentá de nuevo.';
+        },
+      });
+    } else {
+      // EMPLOYEE: el backend scopea automáticamente a los adelantos propios
+      // (RF-29) — no hace falta employees/periods, acá no hay filtros ni gestión.
+      this.advanceService.list().subscribe({
+        next: (advances) => {
+          this.advances = advances;
+          this.loading = false;
+        },
+        error: () => {
+          this.loading = false;
+          this.loadError = 'No se pudieron cargar tus adelantos.';
+        },
+      });
+    }
   }
 
   badgeVariant(estado: EstadoAdelanto): BadgeVariant {
