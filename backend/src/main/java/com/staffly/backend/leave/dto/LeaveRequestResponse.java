@@ -17,7 +17,8 @@ public record LeaveRequestResponse(
         LocalDate fechaFin,
         String motivo,
         EstadoLicencia estado,
-        String motivoRechazo) {
+        String motivoRechazo,
+        UUID aprobadoPorId) {
 
     public static LeaveRequestResponse from(LeaveRequest lr) {
         return new LeaveRequestResponse(
@@ -31,6 +32,7 @@ public record LeaveRequestResponse(
                 lr.getFechaFin(),
                 lr.getMotivo(),
                 lr.getEstado(),
-                lr.getMotivoRechazo());
+                lr.getMotivoRechazo(),
+                lr.getAprobadoPor());
     }
 }

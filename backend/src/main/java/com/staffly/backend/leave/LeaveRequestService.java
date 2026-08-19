@@ -116,6 +116,7 @@ public class LeaveRequestService {
         }
 
         lr.setEstado(EstadoLicencia.APROBADA);
+        lr.setAprobadoPor(principal.getUserId());
         return LeaveRequestResponse.from(leaveRequestRepository.save(lr));
     }
 

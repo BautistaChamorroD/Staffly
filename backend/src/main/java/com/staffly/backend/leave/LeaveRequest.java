@@ -42,6 +42,9 @@ public class LeaveRequest extends TenantAwareEntity {
     @Column(name = "motivo_rechazo", length = 1000)
     private String motivoRechazo;
 
+    @Column(name = "aprobado_por")
+    private UUID aprobadoPor;
+
     public UUID getId() { return id; }
 
     public Employee getEmployee() { return employee; }
@@ -66,4 +69,7 @@ public class LeaveRequest extends TenantAwareEntity {
 
     public String getMotivoRechazo() { return motivoRechazo; }
     public void setMotivoRechazo(String motivoRechazo) { this.motivoRechazo = motivoRechazo; }
+
+    public UUID getAprobadoPor() { return aprobadoPor; }
+    public void setAprobadoPor(UUID aprobadoPor) { this.aprobadoPor = aprobadoPor; }
 }
