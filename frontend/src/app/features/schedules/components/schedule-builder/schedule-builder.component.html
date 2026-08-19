@@ -191,10 +191,13 @@
 }
 
 <!-- Block detail modal -->
-@if (selectedSchedule) {
+@if (selectedSchedule && !editOpen && !duplicateOpen) {
   <ui-modal title="Detalle del turno" (closed)="closeBlockDetail()">
     @if (deleteError) {
       <p class="mb-4 rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ deleteError }}</p>
+    }
+    @if (actionError) {
+      <p class="mb-4 rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ actionError }}</p>
     }
     <div class="flex flex-col gap-2 text-sm">
       <div class="text-brand-muted">
@@ -204,6 +207,9 @@
       <div class="text-brand-muted">
         <span class="font-medium text-brand-ink">Horario:</span>
         {{ formatTimeRange(selectedSchedule) }}
+        @if (crossesMidnight(selectedSchedule)) {
+          <span class="text-xs">(cruza medianoche)</span>
+        }
       </div>
       <div class="text-brand-muted">
         <span class="font-medium text-brand-ink">Tipo:</span>
@@ -213,12 +219,77 @@
         <span class="font-medium text-brand-ink">Estado:</span>
         {{ selectedSchedule.estado }}
       </div>
+      @if (selectedSchedule.warning === 'OUT_OF_AVAILABILITY') {
+        <div class="rounded bg-badge-warning-bg p-2 text-xs text-badge-warning-ink">
+          ⚠ Fuera de la disponibilidad declarada por el empleado.
+        </div>
+      }
     </div>
-    <div class="mt-6 flex justify-end gap-2">
+    <div class="mt-6 flex flex-wrap justify-end gap-2">
       <button ui-button variant="secondary" type="button" (click)="closeBlockDetail()">Cerrar</button>
       @if (canWrite) {
-        <button ui-button type="button" (click)="confirmDelete()">Eliminar turno</button>
+        @if (selectedSchedule.estado === 'PLANIFICADO') {
+          <button ui-button variant="secondary" type="button" (click)="openEditForm()">Editar</button>
+          <button ui-button variant="secondary" type="button" (click)="openDuplicateForm()">Duplicar semanal</button>
+          <button ui-button type="button" (click)="handleConfirm()">Confirmar</button>
+          <button ui-button type="button" (click)="confirmDelete()">Eliminar turno</button>
+        }
+        @if (selectedSchedule.estado === 'CONFIRMADO') {
+          <button ui-button variant="secondary" type="button" (click)="handleStatusChange('AUSENTE')">Marcar ausente</button>
+          <button ui-button type="button" (click)="handleStatusChange('CUMPLIDO')">Marcar cumplido</button>
+        }
       }
+    </div>
+  </ui-modal>
+}
+
+<!-- Edit modal -->
+@if (selectedSchedule && editOpen) {
+  <ui-modal title="Editar turno" (closed)="closeEditForm()">
+    @if (editError) {
+      <p class="mb-4 rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ editError }}</p>
+    }
+    <form [formGroup]="editForm" class="flex flex-col gap-4">
+      <ui-select label="Sucursal" formControlName="branchId" [options]="branchOptions"></ui-select>
+      <ui-input label="Inicio" type="datetime-local" formControlName="fechaHoraInicio"></ui-input>
+      <ui-input label="Fin" type="datetime-local" formControlName="fechaHoraFin"></ui-input>
+      <ui-select label="Tipo de turno" formControlName="tipoTurno" [options]="tipoTurnoOptions"></ui-select>
+    </form>
+    <div class="mt-6 flex justify-end gap-2">
+      <button ui-button variant="secondary" type="button" (click)="closeEditForm()">Cancelar</button>
+      <button ui-button type="button" [disabled]="editForm.invalid" (click)="handleEditSubmit()">
+        Guardar cambios
+      </button>
+    </div>
+  </ui-modal>
+}
+
+<!-- Duplicate weekly modal -->
+@if (selectedSchedule && duplicateOpen) {
+  <ui-modal title="Duplicar como plantilla semanal" (closed)="closeDuplicateForm()">
+    <p class="mb-4 text-sm text-brand-muted">
+      Crea una copia de este turno en el mismo día de la semana para cada semana del mes elegido.
+    </p>
+    @if (duplicateError) {
+      <p class="mb-4 rounded-lg bg-badge-error-bg p-3 text-sm text-badge-error-ink" role="alert">{{ duplicateError }}</p>
+    }
+    @if (duplicateResult) {
+      <div class="mb-4 rounded-lg bg-brand-acc p-3 text-sm text-brand-ink">
+        Se crearon {{ duplicateResult.turnosCreados.length }} turno(s).
+        @if (duplicateResult.advertencia) {
+          <div class="mt-1 text-badge-warning-ink">⚠ Alguna copia quedó fuera de la disponibilidad declarada.</div>
+        }
+      </div>
+    }
+    <form [formGroup]="duplicateForm" class="flex flex-col gap-4">
+      <ui-input label="Mes objetivo (1-12)" type="number" formControlName="mesObjetivo"></ui-input>
+      <ui-input label="Año objetivo" type="number" formControlName="anioObjetivo"></ui-input>
+    </form>
+    <div class="mt-6 flex justify-end gap-2">
+      <button ui-button variant="secondary" type="button" (click)="closeDuplicateForm()">Cerrar</button>
+      <button ui-button type="button" [disabled]="duplicateForm.invalid" (click)="handleDuplicateSubmit()">
+        Duplicar
+      </button>
     </div>
   </ui-modal>
 }

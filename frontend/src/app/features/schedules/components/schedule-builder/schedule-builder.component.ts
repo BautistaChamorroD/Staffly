@@ -14,7 +14,14 @@ import { Employee } from '../../../employees/models/employee';
 import { EmployeeService } from '../../../employees/services/employee.service';
 import { LeaveRequest } from '../../../leaves/models/leave';
 import { LeaveRequestService } from '../../../leaves/services/leave-request.service';
-import { CreateScheduleRequest, Schedule, TipoTurno } from '../../models/schedule';
+import {
+  CreateScheduleRequest,
+  DuplicateWeeklyResponse,
+  EstadoTurno,
+  Schedule,
+  TipoTurno,
+  UpdateScheduleRequest,
+} from '../../models/schedule';
 import { ScheduleService } from '../../services/schedule.service';
 
 const MONTHS_SHORT = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
@@ -98,6 +105,24 @@ export class ScheduleBuilderComponent implements OnInit {
 
   selectedSchedule: Schedule | null = null;
   deleteError: string | null = null;
+  actionError: string | null = null;
+
+  editOpen = false;
+  editError: string | null = null;
+  editForm = this.fb.group({
+    branchId: ['', Validators.required],
+    fechaHoraInicio: ['', Validators.required],
+    fechaHoraFin: ['', Validators.required],
+    tipoTurno: ['FIJO', Validators.required],
+  });
+
+  duplicateOpen = false;
+  duplicateError: string | null = null;
+  duplicateResult: DuplicateWeeklyResponse | null = null;
+  duplicateForm = this.fb.group({
+    mesObjetivo: [1, [Validators.required, Validators.min(1), Validators.max(12)]],
+    anioObjetivo: [new Date().getFullYear(), [Validators.required, Validators.min(1)]],
+  });
 
   get selectedBranchId(): string | null {
     return this.filterForm.getRawValue().branchId || null;
@@ -364,6 +389,10 @@ export class ScheduleBuilderComponent implements OnInit {
   openBlockDetail(schedule: Schedule): void {
     this.selectedSchedule = schedule;
     this.deleteError = null;
+    this.actionError = null;
+    this.editOpen = false;
+    this.duplicateOpen = false;
+    this.duplicateResult = null;
   }
 
   closeBlockDetail(): void {
@@ -381,5 +410,113 @@ export class ScheduleBuilderComponent implements OnInit {
         this.deleteError = 'No se pudo eliminar el turno. Intentá de nuevo.';
       },
     });
+  }
+
+  /** Reemplaza el schedule actualizado tanto en la lista como en la selección activa. */
+  private applyUpdatedSchedule(updated: Schedule): void {
+    this.schedules = this.schedules.map((s) => (s.id === updated.id ? updated : s));
+    this.selectedSchedule = updated;
+  }
+
+  // ── editar ───────────────────────────────────────────────────────────────
+
+  openEditForm(): void {
+    if (!this.selectedSchedule) return;
+    this.editError = null;
+    this.editOpen = true;
+    this.editForm.reset({
+      branchId: this.selectedSchedule.branchId,
+      fechaHoraInicio: this.selectedSchedule.fechaHoraInicio.slice(0, 16),
+      fechaHoraFin: this.selectedSchedule.fechaHoraFin.slice(0, 16),
+      tipoTurno: this.selectedSchedule.tipoTurno,
+    });
+  }
+
+  closeEditForm(): void {
+    this.editOpen = false;
+  }
+
+  handleEditSubmit(): void {
+    if (this.editForm.invalid || !this.selectedSchedule) return;
+    const raw = this.editForm.getRawValue();
+    this.editError = null;
+
+    const withSeconds = (dt: string) => (/:\d{2}:\d{2}$/.test(dt) ? dt : `${dt}:00`);
+    const request: UpdateScheduleRequest = {
+      branchId: raw.branchId!,
+      fechaHoraInicio: withSeconds(raw.fechaHoraInicio!),
+      fechaHoraFin: withSeconds(raw.fechaHoraFin!),
+      tipoTurno: raw.tipoTurno as TipoTurno,
+    };
+
+    this.scheduleService.update(this.selectedSchedule.id, request).subscribe({
+      next: (updated) => {
+        this.editOpen = false;
+        this.applyUpdatedSchedule(updated);
+        this.loadSchedules();
+      },
+      error: () => {
+        this.editError = 'No se pudo editar el turno. Verificá que no haya solapamiento con otro turno del empleado.';
+      },
+    });
+  }
+
+  // ── confirmar / cambiar estado ──────────────────────────────────────────
+
+  handleConfirm(): void {
+    if (!this.selectedSchedule) return;
+    this.actionError = null;
+    this.scheduleService.confirm(this.selectedSchedule.id).subscribe({
+      next: (updated) => this.applyUpdatedSchedule(updated),
+      error: () => { this.actionError = 'No se pudo confirmar el turno.'; },
+    });
+  }
+
+  handleStatusChange(estado: Extract<EstadoTurno, 'CUMPLIDO' | 'AUSENTE'>): void {
+    if (!this.selectedSchedule) return;
+    this.actionError = null;
+    this.scheduleService.updateStatus(this.selectedSchedule.id, { estado }).subscribe({
+      next: (updated) => this.applyUpdatedSchedule(updated),
+      error: () => { this.actionError = 'No se pudo cambiar el estado del turno.'; },
+    });
+  }
+
+  // ── duplicar semanal ─────────────────────────────────────────────────────
+
+  openDuplicateForm(): void {
+    if (!this.selectedSchedule) return;
+    this.duplicateError = null;
+    this.duplicateResult = null;
+    this.duplicateOpen = true;
+    const sourceMonth = new Date(this.selectedSchedule.fechaHoraInicio).getMonth() + 1;
+    const sourceYear = new Date(this.selectedSchedule.fechaHoraInicio).getFullYear();
+    this.duplicateForm.reset({ mesObjetivo: sourceMonth, anioObjetivo: sourceYear });
+  }
+
+  closeDuplicateForm(): void {
+    this.duplicateOpen = false;
+  }
+
+  handleDuplicateSubmit(): void {
+    if (this.duplicateForm.invalid || !this.selectedSchedule) return;
+    const raw = this.duplicateForm.getRawValue();
+    this.duplicateError = null;
+
+    this.scheduleService
+      .duplicateWeekly(this.selectedSchedule.id, {
+        mesObjetivo: Number(raw.mesObjetivo),
+        anioObjetivo: Number(raw.anioObjetivo),
+      })
+      .subscribe({
+        next: (result) => {
+          this.duplicateResult = result;
+          this.loadSchedules();
+        },
+        error: (err) => {
+          this.duplicateError = err?.error?.code === 'SCHEDULE_OVERLAP_BATCH'
+            ? 'Hay turnos existentes que se solapan con alguna de las copias — no se creó ninguna.'
+            : 'No se pudo duplicar el turno como plantilla semanal.';
+        },
+      });
   }
 }
