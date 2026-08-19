@@ -4,8 +4,7 @@ export interface LeaveType {
   id: string;
   nombre: string;
   esPaga: boolean;
-  tieneCupoAnual: boolean;
-  cuposDiasAnual: number | null;
+  cupoAnual: number | null;
 }
 
 export interface LeaveRequest {

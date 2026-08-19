@@ -89,8 +89,10 @@ export class LeavesListComponent implements OnInit {
   typeForm = this.fb.group({
     nombre: ['', [Validators.required, Validators.maxLength(100)]],
     esPaga: [false],
+    // tieneCupoAnual es un control puramente de UI (habilita/deshabilita el input
+    // de cupoAnual) — el backend modela un único campo cupoAnual: Integer nullable.
     tieneCupoAnual: [false],
-    cuposDiasAnual: [null as number | null],
+    cupoAnual: [null as number | null],
   });
 
   // Approve state (inline, no modal)
@@ -337,7 +339,7 @@ export class LeavesListComponent implements OnInit {
   openNewTypeModal(): void {
     this.editingType = null;
     this.typeError = null;
-    this.typeForm.reset({ nombre: '', esPaga: false, tieneCupoAnual: false, cuposDiasAnual: null });
+    this.typeForm.reset({ nombre: '', esPaga: false, tieneCupoAnual: false, cupoAnual: null });
     this.showTypeModal = true;
   }
 
@@ -347,8 +349,8 @@ export class LeavesListComponent implements OnInit {
     this.typeForm.patchValue({
       nombre: type.nombre,
       esPaga: type.esPaga,
-      tieneCupoAnual: type.tieneCupoAnual,
-      cuposDiasAnual: type.cuposDiasAnual,
+      tieneCupoAnual: type.cupoAnual != null,
+      cupoAnual: type.cupoAnual,
     });
     this.showTypeModal = true;
   }
@@ -368,8 +370,7 @@ export class LeavesListComponent implements OnInit {
     const body: Partial<LeaveType> = {
       nombre: raw.nombre!,
       esPaga: raw.esPaga ?? false,
-      tieneCupoAnual: raw.tieneCupoAnual ?? false,
-      cuposDiasAnual: raw.tieneCupoAnual ? (raw.cuposDiasAnual ?? null) : null,
+      cupoAnual: raw.tieneCupoAnual ? (raw.cupoAnual ?? null) : null,
     };
     const op$ = this.editingType
       ? this.leaveTypeService.update(this.editingType.id, body)
