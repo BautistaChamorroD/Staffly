@@ -1,0 +1,1 @@
+ALTER TABLE payroll_config ADD COLUMN tipo_umbral VARCHAR(20) NOT NULL DEFAULT 'DIARIO';

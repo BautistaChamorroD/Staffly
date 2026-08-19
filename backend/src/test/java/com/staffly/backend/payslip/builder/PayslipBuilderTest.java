@@ -15,6 +15,7 @@ import com.staffly.backend.payroll.PayrollConfig;
 import com.staffly.backend.payroll.PayrollPeriod;
 import com.staffly.backend.payroll.Periodicidad;
 import com.staffly.backend.payroll.TipoConcepto;
+import com.staffly.backend.payroll.TipoUmbral;
 import com.staffly.backend.schedule.EstadoTurno;
 import com.staffly.backend.schedule.Schedule;
 import com.staffly.backend.schedule.TipoTurno;
@@ -64,6 +65,7 @@ class PayslipBuilderTest {
         config.setMultiplicadorHoraExtra(BigDecimal.valueOf(1.5));
         config.setMultiplicadorFeriado(BigDecimal.valueOf(2.0));
         config.setPeriodicidad(Periodicidad.MENSUAL);
+        config.setTipoUmbral(TipoUmbral.DIARIO);
         config.setConceptosDescuento(List.of());
     }
 
@@ -150,6 +152,71 @@ class PayslipBuilderTest {
         assertEquals(bd("8.00"), result.horasFeriado());
         // 8000 normal + 16000 feriado = 24000
         assertEquals(bd("24000.00"), result.brutoCalculado());
+    }
+
+    @Test
+    void umbralDiario_cincoTurnosDeOchoHorasEnDiasDistintos_sinHoraExtra() {
+        // AUD-24 / issue #129: el umbral es por día, no acumulado sobre todo el período.
+        // 5 turnos de 8h en 5 días distintos de un período MENSUAL con umbralHorasExtra=8
+        // deben dar 0h extra — antes del fix daban 8h normales + 32h extra.
+        config.setTipoUmbral(TipoUmbral.DIARIO);
+        List<Schedule> schedules = List.of(
+                shift(2026, 8, 3, 9, 0, 17, 0),
+                shift(2026, 8, 4, 9, 0, 17, 0),
+                shift(2026, 8, 5, 9, 0, 17, 0),
+                shift(2026, 8, 6, 9, 0, 17, 0),
+                shift(2026, 8, 7, 9, 0, 17, 0)
+        );
+        PayslipCalculation result = builder().withSchedules(schedules).build();
+
+        assertEquals(bd("40.00"), result.horasNormales());
+        assertEquals(bd("0.00"), result.horasExtra());
+    }
+
+    @Test
+    void umbralDiario_turnoDeDiezHorasEnUnDia_dosHorasExtra() {
+        config.setTipoUmbral(TipoUmbral.DIARIO);
+        List<Schedule> schedules = List.of(
+                shift(2026, 8, 3, 8, 0, 17, 0),  // 9h
+                shift(2026, 8, 3, 17, 0, 18, 0)  // +1h el mismo día = 10h total
+        );
+        PayslipCalculation result = builder().withSchedules(schedules).build();
+
+        assertEquals(bd("8.00"), result.horasNormales());
+        assertEquals(bd("2.00"), result.horasExtra());
+    }
+
+    @Test
+    void umbralSemanal_turnosDeLaMismaSemanaSeAcumulan() {
+        // umbral semanal de 8h (reutilizamos el mismo valor de config para simplificar
+        // el escenario) — 5 turnos de 8h en la misma semana ISO deben acumular hasta
+        // superar el umbral, a diferencia del caso DIARIO de arriba.
+        config.setTipoUmbral(TipoUmbral.SEMANAL);
+        List<Schedule> schedules = List.of(
+                shift(2026, 8, 3, 9, 0, 17, 0),  // lunes
+                shift(2026, 8, 4, 9, 0, 17, 0),  // martes
+                shift(2026, 8, 5, 9, 0, 17, 0),  // miércoles
+                shift(2026, 8, 6, 9, 0, 17, 0),  // jueves
+                shift(2026, 8, 7, 9, 0, 17, 0)   // viernes — misma semana ISO
+        );
+        PayslipCalculation result = builder().withSchedules(schedules).build();
+
+        // 40h totales, umbral=8 → 8 normales + 32 extra
+        assertEquals(bd("8.00"), result.horasNormales());
+        assertEquals(bd("32.00"), result.horasExtra());
+    }
+
+    @Test
+    void umbralSemanal_turnosEnSemanasDistintasNoSeAcumulanEntreSi() {
+        config.setTipoUmbral(TipoUmbral.SEMANAL);
+        List<Schedule> schedules = List.of(
+                shift(2026, 8, 7, 9, 0, 17, 0),   // viernes, semana 1
+                shift(2026, 8, 10, 9, 0, 17, 0)   // lunes siguiente, semana 2
+        );
+        PayslipCalculation result = builder().withSchedules(schedules).build();
+
+        assertEquals(bd("16.00"), result.horasNormales());
+        assertEquals(bd("0.00"), result.horasExtra());
     }
 
     @Test

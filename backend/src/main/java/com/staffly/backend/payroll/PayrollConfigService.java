@@ -35,6 +35,7 @@ public class PayrollConfigService {
                 .orElseGet(() -> createDefault(companyId));
 
         config.setUmbralHorasExtra(request.umbralHorasExtra());
+        config.setTipoUmbral(request.tipoUmbral());
         config.setMultiplicadorHoraExtra(request.multiplicadorHoraExtra());
         config.setMultiplicadorFeriado(request.multiplicadorFeriado());
         config.setPeriodicidad(request.periodicidad());
@@ -61,6 +62,7 @@ public class PayrollConfigService {
         PayrollConfig config = new PayrollConfig();
         config.setCompanyId(companyId);
         config.setUmbralHorasExtra(BigDecimal.valueOf(8));
+        config.setTipoUmbral(TipoUmbral.DIARIO);
         config.setMultiplicadorHoraExtra(BigDecimal.valueOf(1.5));
         config.setMultiplicadorFeriado(BigDecimal.valueOf(2.0));
         config.setPeriodicidad(Periodicidad.MENSUAL);

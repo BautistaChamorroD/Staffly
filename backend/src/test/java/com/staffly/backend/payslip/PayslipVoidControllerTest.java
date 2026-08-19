@@ -14,6 +14,7 @@ import com.staffly.backend.payroll.PayrollConfigRepository;
 import com.staffly.backend.payroll.PayrollPeriod;
 import com.staffly.backend.payroll.EstadoPeriodo;
 import com.staffly.backend.payroll.Periodicidad;
+import com.staffly.backend.payroll.TipoUmbral;
 import com.staffly.backend.payslip.builder.PayslipCalculation;
 import com.staffly.backend.user.EstadoUsuario;
 import com.staffly.backend.user.RolUsuario;
@@ -200,6 +201,7 @@ class PayslipVoidControllerTest {
         PayrollConfig cfg = new PayrollConfig();
         cfg.setCompanyId(companyId);
         cfg.setUmbralHorasExtra(BigDecimal.valueOf(160));
+        cfg.setTipoUmbral(TipoUmbral.DIARIO);
         cfg.setMultiplicadorHoraExtra(BigDecimal.valueOf(1.5));
         cfg.setMultiplicadorFeriado(BigDecimal.valueOf(2.0));
         cfg.setPeriodicidad(Periodicidad.MENSUAL);

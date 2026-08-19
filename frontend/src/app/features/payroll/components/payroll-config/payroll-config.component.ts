@@ -31,6 +31,11 @@ export class PayrollConfigComponent implements OnInit {
     { value: 'SEMANAL', label: 'Semanal' },
   ];
 
+  readonly tipoUmbralOptions: SelectOption[] = [
+    { value: 'DIARIO', label: 'Por día' },
+    { value: 'SEMANAL', label: 'Por semana' },
+  ];
+
   readonly tipoConceptoOptions: SelectOption[] = [
     { value: 'PORCENTAJE', label: 'Porcentaje (%)' },
     { value: 'MONTO_FIJO', label: 'Monto fijo ($)' },
@@ -38,6 +43,7 @@ export class PayrollConfigComponent implements OnInit {
 
   form = this.fb.group({
     umbralHorasExtra: ['', [Validators.required, Validators.min(0)]],
+    tipoUmbral: ['', Validators.required],
     multiplicadorHoraExtra: ['', [Validators.required, Validators.min(1)]],
     multiplicadorFeriado: ['', [Validators.required, Validators.min(1)]],
     periodicidad: ['', Validators.required],
@@ -105,6 +111,7 @@ export class PayrollConfigComponent implements OnInit {
   private patchForm(config: PayrollConfig): void {
     this.form.patchValue({
       umbralHorasExtra: String(config.umbralHorasExtra),
+      tipoUmbral: config.tipoUmbral,
       multiplicadorHoraExtra: String(config.multiplicadorHoraExtra),
       multiplicadorFeriado: String(config.multiplicadorFeriado),
       periodicidad: config.periodicidad,
@@ -134,6 +141,7 @@ export class PayrollConfigComponent implements OnInit {
     const raw = this.form.getRawValue();
     const request: UpdatePayrollConfigRequest = {
       umbralHorasExtra: Number(raw.umbralHorasExtra),
+      tipoUmbral: raw.tipoUmbral as PayrollConfig['tipoUmbral'],
       multiplicadorHoraExtra: Number(raw.multiplicadorHoraExtra),
       multiplicadorFeriado: Number(raw.multiplicadorFeriado),
       periodicidad: raw.periodicidad as PayrollConfig['periodicidad'],

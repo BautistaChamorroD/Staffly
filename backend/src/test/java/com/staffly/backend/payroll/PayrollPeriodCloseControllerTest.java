@@ -200,6 +200,7 @@ class PayrollPeriodCloseControllerTest {
         PayrollConfig cfg = new PayrollConfig();
         cfg.setCompanyId(companyId);
         cfg.setUmbralHorasExtra(BigDecimal.valueOf(160));
+        cfg.setTipoUmbral(TipoUmbral.DIARIO);
         cfg.setMultiplicadorHoraExtra(BigDecimal.valueOf(1.5));
         cfg.setMultiplicadorFeriado(BigDecimal.valueOf(2.0));
         cfg.setPeriodicidad(Periodicidad.MENSUAL);
