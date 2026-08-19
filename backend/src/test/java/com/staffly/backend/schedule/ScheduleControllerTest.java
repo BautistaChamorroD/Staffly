@@ -430,6 +430,22 @@ class ScheduleControllerTest {
     }
 
     @Test
+    void createAceptaTimestampSinSegundos() throws Exception {
+        // issue #101: el frontend puede mandar "HH:mm" sin segundos — Jackson/JSR-310
+        // acepta LocalDateTime con o sin segundos, esto documenta esa garantía.
+        String body = objectMapper.writeValueAsString(Map.of(
+                "employeeId", emp1.getId().toString(),
+                "branchId", branch1.getId().toString(),
+                "fechaHoraInicio", "2026-07-06T09:00",
+                "fechaHoraFin", "2026-07-06T17:00",
+                "tipoTurno", "FIJO"));
+        mockMvc.perform(post(BASE_URL)
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType("application/json").content(body))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
     void fechaHoraFinDebeSerPosteriorAInicio() throws Exception {
         // fin == inicio → 400
         String body = objectMapper.writeValueAsString(Map.of(
