@@ -23,4 +23,17 @@ public interface PayslipRepository extends JpaRepository<Payslip, UUID> {
 
     @Query("SELECT p FROM Payslip p WHERE p.companyId = :companyId AND p.payrollPeriod.id = :periodId")
     List<Payslip> findByCompanyIdAndPayrollPeriodId(@Param("companyId") UUID companyId, @Param("periodId") UUID periodId);
+
+    /**
+     * Recibo NORMAL existente para este empleado+período, si lo hay — usado al
+     * cerrar para actualizar en vez de insertar un duplicado (ej. al volver a
+     * cerrar tras una reapertura). Excluye AJUSTE a propósito: un ajuste convive
+     * legítimamente con el original (ANULADO) del mismo empleado+período.
+     */
+    @Query("SELECT p FROM Payslip p WHERE p.companyId = :companyId AND p.employee.id = :employeeId " +
+           "AND p.payrollPeriod.id = :periodId AND p.tipo = com.staffly.backend.payslip.TipoRecibo.NORMAL")
+    Optional<Payslip> findNormalByCompanyIdAndEmployeeIdAndPayrollPeriodId(
+            @Param("companyId") UUID companyId,
+            @Param("employeeId") UUID employeeId,
+            @Param("periodId") UUID periodId);
 }

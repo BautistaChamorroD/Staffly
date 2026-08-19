@@ -7,6 +7,7 @@ import com.staffly.backend.payroll.dto.PayrollPeriodResponse;
 import com.staffly.backend.payslip.builder.PayslipBuilder;
 import com.staffly.backend.payslip.builder.PayslipCalculation;
 import com.staffly.backend.schedule.Schedule;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -21,6 +22,17 @@ import java.util.UUID;
  */
 public abstract class PayrollCloseTemplate {
 
+    /**
+     * {@code @Transactional} va acá — sobre el método concreto — y no alcanza con
+     * ponerlo a nivel de clase en la subclase: como {@code close()} nunca se
+     * sobreescribe, Spring resuelve sus atributos transaccionales contra la clase
+     * que lo DECLARA ({@code PayrollCloseTemplate}), no contra la clase en tiempo
+     * de ejecución. Sin esto, el lock pesimista de
+     * {@code validateAndLoadPeriod()} se libera apenas termina ese método, en vez
+     * de mantenerse durante todo el cierre — el propio cierre completo (todos los
+     * Payslips + el período) tampoco era atómico (issue #149).
+     */
+    @Transactional
     public PayrollPeriodResponse close(UUID periodId, UUID companyId) {
         PayrollPeriod        period    = validateAndLoadPeriod(periodId, companyId);
         PayrollConfig        config    = loadConfig(companyId);
