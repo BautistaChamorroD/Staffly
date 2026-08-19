@@ -10,7 +10,6 @@ import com.staffly.backend.employee.Employee;
 import com.staffly.backend.employee.EmployeeRepository;
 import com.staffly.backend.employee.EstadoLaboral;
 import com.staffly.backend.employee.EstadoLiquidacion;
-import com.staffly.backend.holiday.Holiday;
 import com.staffly.backend.holiday.HolidayRepository;
 import com.staffly.backend.leave.EstadoLicencia;
 import com.staffly.backend.leave.LeaveRequest;
@@ -81,10 +80,7 @@ public class PayrollPeriodCloseService extends PayrollCloseTemplate {
     @Override
     protected List<LocalDate> loadHolidays(PayrollPeriod period, UUID companyId) {
         return holidayRepository
-                .findByCompanyIdAndFechaBetween(companyId, period.getFechaInicio(), period.getFechaFin())
-                .stream()
-                .map(Holiday::getFecha)
-                .toList();
+                .findApplicableFechasInRange(companyId, period.getFechaInicio(), period.getFechaFin());
     }
 
     @Override

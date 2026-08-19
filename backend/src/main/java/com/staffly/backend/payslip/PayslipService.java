@@ -7,7 +7,6 @@ import com.staffly.backend.common.BadRequestException;
 import com.staffly.backend.common.ResourceNotFoundException;
 import com.staffly.backend.common.UnprocessableEntityException;
 import com.staffly.backend.employee.Employee;
-import com.staffly.backend.holiday.Holiday;
 import com.staffly.backend.holiday.HolidayRepository;
 import com.staffly.backend.leave.EstadoLicencia;
 import com.staffly.backend.leave.LeaveRequest;
@@ -128,8 +127,7 @@ public class PayslipService {
                         "La empresa no tiene configuración de liquidación"));
 
         List<LocalDate> holidays = holidayRepository
-                .findByCompanyIdAndFechaBetween(companyId, period.getFechaInicio(), period.getFechaFin())
-                .stream().map(Holiday::getFecha).toList();
+                .findApplicableFechasInRange(companyId, period.getFechaInicio(), period.getFechaFin());
 
         List<Schedule> schedules = scheduleRepository.findByCompanyIdAndEmployeeIdInRange(
                 companyId, employee.getId(),
