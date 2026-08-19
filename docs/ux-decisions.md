@@ -56,6 +56,8 @@ Tabla con columnas: nombre, sucursal, puesto, **estado laboral** y **estado de l
 
 Lista de solicitudes con acciones directas de aprobar/rechazar en cada card. Caso especial a destacar: si la solicitud se superpone con un turno ya asignado (`Schedule` existente), se muestra la advertencia de conflicto directo en la card **antes** de que RRHH/Supervisor intente aprobar — anticipa visualmente el 409 que devolvería `POST /leave-requests/{id}/approve` en ese caso, en vez de que el usuario se entere recién al hacer click en "aprobar".
 
+**No existe forma de forzar la aprobación pese al conflicto** (misma clase de estado inválido que la validación turno-vs-turno bloquea siempre, sin excepción). La advertencia de conflicto en la card incluye un link directo al turno en conflicto (mismo componente de detalle que usa `schedule-builder`) para que el operador lo edite o borre — solo posible si sigue `PLANIFICADO` — y recién ahí reintente aprobar.
+
 ---
 
 ## Próximas pantallas a diseñar (pendientes, nivel de detalle menor — se resuelven sobre la marcha en implementación)
