@@ -438,6 +438,82 @@ class ReportControllerTest {
                 .andExpect(jsonPath("$.length()").value(0));
     }
 
+    // ── export ────────────────────────────────────────────────────────────────
+
+    @Test
+    void adminPuedeExportarHoursWorkedCsv() throws Exception {
+        createSchedule(companyAId, emp1, branch1, EstadoTurno.CUMPLIDO,
+                LocalDateTime.of(2026, 7, 6, 9, 0), LocalDateTime.of(2026, 7, 6, 17, 0));
+
+        String csv = mockMvc.perform(get(BASE_URL + "/hours-worked/export?format=csv&desde=2026-07-01&hasta=2026-07-31")
+                        .header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "text/csv;charset=UTF-8"))
+                .andExpect(header().string("Content-Disposition", "attachment; filename=hours-worked.csv"))
+                .andReturn().getResponse().getContentAsString();
+
+        org.assertj.core.api.Assertions.assertThat(csv).contains("employeeNombre");
+        org.assertj.core.api.Assertions.assertThat(csv).contains("Juan");
+    }
+
+    @Test
+    void adminPuedeExportarPayrollCostPdf() throws Exception {
+        PayrollPeriod period = createPayrollPeriod(companyAId, EstadoPeriodo.CERRADO,
+                LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 31));
+        createPayslip(companyAId, emp1, period, EstadoRecibo.PAGADO, TipoRecibo.NORMAL,
+                BigDecimal.valueOf(200_000), BigDecimal.valueOf(20_000), BigDecimal.valueOf(180_000));
+
+        byte[] pdf = mockMvc.perform(get(BASE_URL + "/payroll-cost/export?format=pdf&desde=2026-07-01&hasta=2026-07-31")
+                        .header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "application/pdf"))
+                .andExpect(header().string("Content-Disposition", "attachment; filename=payroll-cost.pdf"))
+                .andReturn().getResponse().getContentAsByteArray();
+
+        org.assertj.core.api.Assertions.assertThat(new String(pdf, 0, 4)).isEqualTo("%PDF");
+    }
+
+    @Test
+    void rrhhPuedeExportarPendingAdvancesCsv() throws Exception {
+        createAdvance(companyAId, emp1, EstadoAdelanto.PENDIENTE,
+                LocalDate.of(2026, 7, 15), BigDecimal.valueOf(50_000), "Adelanto de sueldo");
+
+        String csv = mockMvc.perform(get(BASE_URL + "/pending-advances/export?format=csv")
+                        .header("Authorization", "Bearer " + rrhhAToken))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        org.assertj.core.api.Assertions.assertThat(csv).contains("Adelanto de sueldo");
+    }
+
+    @Test
+    void supervisorNoPuedeExportar() throws Exception {
+        mockMvc.perform(get(BASE_URL + "/hours-worked/export?format=csv")
+                        .header("Authorization", "Bearer " + supervisorAToken))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void employeeNoPuedeExportar() throws Exception {
+        mockMvc.perform(get(BASE_URL + "/hours-worked/export?format=csv")
+                        .header("Authorization", "Bearer " + empToken1))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void formatoInvalidoRetorna400() throws Exception {
+        mockMvc.perform(get(BASE_URL + "/hours-worked/export?format=xml")
+                        .header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void reporteDesconocidoRetorna400() throws Exception {
+        mockMvc.perform(get(BASE_URL + "/no-existe/export?format=csv")
+                        .header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isBadRequest());
+    }
+
     // ── helpers ───────────────────────────────────────────────────────────────
 
     private UUID createCompany(String nombre) {
