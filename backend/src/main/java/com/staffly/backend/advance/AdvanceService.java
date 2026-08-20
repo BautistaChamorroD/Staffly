@@ -101,6 +101,7 @@ public class AdvanceService {
 
         publishFieldChange(advance, principal, "estado", advance.getEstado().name(), "ELIMINADO");
         advanceRepository.delete(advance);
+        revertirEstadoLiquidacionSiNoQuedanPendientes(advance.getEmployee(), principal.getCompanyId());
     }
 
     /**
@@ -125,10 +126,32 @@ public class AdvanceService {
         advance.setEstado(EstadoAdelanto.CANCELADO);
         Advance saved = advanceRepository.save(advance);
         publishFieldChange(saved, principal, "estado", estadoAnterior, EstadoAdelanto.CANCELADO.name());
+        revertirEstadoLiquidacionSiNoQuedanPendientes(saved.getEmployee(), principal.getCompanyId());
         return AdvanceResponse.from(saved);
     }
 
     // ── helpers ───────────────────────────────────────────────────────────────
+
+    /**
+     * Issue #161 (seguimiento de AUD-01): eliminar/cancelar un adelanto
+     * marcaba al empleado {@code PENDIENTE} en su creación, pero nunca
+     * revertía a {@code AL_DIA} — quedaba así hasta el próximo cierre de
+     * período ({@code PayrollPeriodCloseService.markEmployeeUpToDate}).
+     * Recalcula contra la fuente de verdad (¿quedan otros adelantos
+     * {@code PENDIENTE} de este empleado?) en vez de asumir ciegamente —
+     * evita pisar un {@code PENDIENTE} legítimo causado por otro adelanto.
+     */
+    private void revertirEstadoLiquidacionSiNoQuedanPendientes(Employee employee, UUID companyId) {
+        if (employee.getEstadoLiquidacion() != EstadoLiquidacion.PENDIENTE) {
+            return;
+        }
+        boolean quedanPendientes = !advanceRepository
+                .findByCompanyIdAndEmployeeIdAndEstado(companyId, employee.getId(), EstadoAdelanto.PENDIENTE)
+                .isEmpty();
+        if (!quedanPendientes) {
+            employee.setEstadoLiquidacion(EstadoLiquidacion.AL_DIA);
+        }
+    }
 
     private void publishFieldChange(
             Advance advance, StafflyUserPrincipal principal, String campo, String valorAnterior, String valorNuevo) {
