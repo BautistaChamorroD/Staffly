@@ -222,7 +222,7 @@
 
 ## Grupo 6 — Auditoría
 
-- [ ] **AUD-34** — `feat(audit): AuditLog completo — eventos de Advance/Payslip/LeaveRequest + GET /audit-log` (`feat/audit-log-completo`)
+- [x] **AUD-34** — `feat(audit): AuditLog completo — eventos de Advance/Payslip/LeaveRequest + GET /audit-log` (`feat/audit-log-completo`)
   - RF: RF-28 (🟡→✅) · Severidad: Crítico (fusiona el endpoint faltante con los eventos faltantes — no tiene sentido construir uno sin el otro)
   - Qué implica: `common/audit/` tiene entidad + Observer + repo, pero sin controller — confirmado en vivo. Solo 2 de las 5 entidades esperadas (Employee, Schedule) publican eventos; `Advance`, `Payslip` (incluida la anulación de un recibo pagado, la operación más sensible del sistema) y `LeaveRequest` no publican ninguno. Antes de codear: **acordar la forma de respuesta** del endpoint con el frontend (`features/audit/models/audit-log.ts` hoy espera `accion`/`descripcion`/`userName`/`cambios`, que no coincide con la entidad real fila-por-campo — decidir si se agrupa por evento o se expone fila-por-campo y se ajusta el frontend). Luego: publicar el evento en `AdvanceService.create/delete`, `PayslipService.voidAndAdjust/markPaid`, `LeaveRequestService.approve/reject/cancel`, y construir el controller con los filtros de `api-design.md` sección 15.
   - Archivos/paquetes: `backend/common/audit/` (nuevo controller), `backend/advance/AdvanceService.java`, `backend/payslip/PayslipService.java`, `backend/leave/LeaveRequestService.java`, `frontend/features/audit/models/audit-log.ts`
@@ -230,13 +230,13 @@
 
 ## Grupo 7 — Documentación y limpieza menor
 
-- [ ] **AUD-35** — `docs(api-design): documentar DELETE /leave-types/{id} y el alcance EMPLOYEE de GET /advances` (`docs/api-design-endpoints-faltantes`)
+- [x] **AUD-35** — `docs(api-design): documentar DELETE /leave-types/{id} y el alcance EMPLOYEE de GET /advances` (`docs/api-design-endpoints-faltantes`)
   - Severidad: Bajo
   - Qué implica: dos endpoints existen en código, correctamente restringidos, pero no están en el documento — agregarlos a las secciones 9 y 12 de `api-design.md`.
   - Archivos/paquetes: `docs/api-design.md`
   - Depende de: nada
 
-- [ ] **AUD-36** — `chore(payroll): resolver código y estado inalcanzable` (`chore/payroll-codigo-inalcanzable`)
+- [x] **AUD-36** — `chore(payroll): resolver código y estado inalcanzable` (`chore/payroll-codigo-inalcanzable`)
   - Severidad: Bajo
   - Qué implica: `StandardHoursStrategy` (100% cubierta por tests unitarios directos, nunca seleccionada en el flujo real) y `EstadoAdelanto.CANCELADO` (definido en el enum, sin ningún endpoint que lo asigne) son deuda menor. Decidir por ítem: implementar el camino que los usa (ej. `PATCH /advances/{id}/cancel`), o eliminarlos si de verdad no hacen falta — no dejarlos como código muerto sin decisión.
   - Archivos/paquetes: `backend/payroll/strategy/StandardHoursStrategy.java`, `backend/advance/EstadoAdelanto.java`
@@ -260,3 +260,21 @@
 Los 36 ítems cubren los 40 hallazgos del informe (algunos se fusionaron por compartir archivo/zona de riesgo — H-3+H-5 en AUD-26, el endpoint+eventos de auditoría en AUD-34, los dos gaps de documentación en AUD-35) y los 13 RF en estado Parcial/Incorrecto de la matriz.
 
 **3 ítems requieren una decisión de producto antes de implementarse** (no antes de crear el issue): AUD-21 (camino "decide igual" en conflicto de licencias), AUD-27 (rol habilitado para cerrar período), AUD-34 (forma de respuesta del audit log). Vale la pena resolver esas 3 decisiones primero, en paralelo a que se creen y empiecen los demás issues.
+
+---
+
+## Estado final (2026-08-20)
+
+Los 36/36 ítems de este plan están mergeados a `main`. **Auditoría técnica 2026-08-17 completa.**
+
+Durante la ejecución de varios ítems, la revisión final de la rama encontró hallazgos adicionales fuera del alcance original del issue — se abrieron como issues de seguimiento independientes, no forman parte de este plan y siguen pendientes:
+
+| Issue | Título | Encontrado en |
+|---|---|---|
+| [#161](https://github.com/BautistaChamorroD/Staffly/issues/161) | `fix(advance): delete() de un adelanto no revierte estado_liquidacion=PENDIENTE` | AUD-01 |
+| [#164](https://github.com/BautistaChamorroD/Staffly/issues/164) | `fix(security): cerrar la clase de bug de AUD-03 en list() y en BranchService/LeaveRequestService` | AUD-03 |
+| [#166](https://github.com/BautistaChamorroD/Staffly/issues/166) | `test(security): cubrir degradación de rol en refresh + revocar token en refresh rechazado` | AUD-04 |
+| [#168](https://github.com/BautistaChamorroD/Staffly/issues/168) | `chore(security): endurecer ForcePasswordChangeFilter — fail-safe default, context-path, cobertura SUPER_ADMIN` | AUD-05 |
+| [#170](https://github.com/BautistaChamorroD/Staffly/issues/170) | `fix(db): índice company_id faltante en payslip, advance, audit_log y employee_availability` | AUD-06 |
+
+Ninguno de los 5 requiere una decisión de producto pendiente salvo #161 (opción (a) recalcular vs (b) confiar en el autofix del cierre de período — impacto bajo/acotado si no se corrige). #164 y #170 tienen severidad Alto/Importante y conviene priorizarlos primero dentro de este grupo de seguimiento.
