@@ -29,6 +29,26 @@ class DatabaseIndexTest {
         assertThat(indexNames("APP_USER")).contains("IDX_APP_USER_COMPANY");
     }
 
+    @Test
+    void payslipHasIndexOnCompanyId() throws Exception {
+        assertThat(indexNames("PAYSLIP")).contains("IDX_PAYSLIP_COMPANY");
+    }
+
+    @Test
+    void advanceHasIndexOnCompanyId() throws Exception {
+        assertThat(indexNames("ADVANCE")).contains("IDX_ADVANCE_COMPANY");
+    }
+
+    @Test
+    void auditLogHasIndexOnCompanyId() throws Exception {
+        assertThat(indexNames("AUDIT_LOG")).contains("IDX_AUDIT_LOG_COMPANY");
+    }
+
+    @Test
+    void employeeAvailabilityHasIndexOnCompanyId() throws Exception {
+        assertThat(indexNames("EMPLOYEE_AVAILABILITY")).contains("IDX_EMPLOYEE_AVAILABILITY_COMPANY");
+    }
+
     private Set<String> indexNames(String tableName) throws Exception {
         Set<String> names = new HashSet<>();
         try (Connection connection = dataSource.getConnection()) {
