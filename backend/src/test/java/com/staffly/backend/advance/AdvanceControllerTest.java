@@ -222,6 +222,98 @@ class AdvanceControllerTest {
     }
 
     @Test
+    void deleteRevierteEstadoLiquidacionSiEraElUnicoPendiente() throws Exception {
+        String resp = mockMvc.perform(post(BASE_URL)
+                        .header("Authorization", "Bearer " + adminAToken)
+                        .contentType("application/json")
+                        .content(buildCreateBody(empA1.getId(), "2026-08-01", "1000.00", "Único adelanto")))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String advanceId = objectMapper.readTree(resp).get("id").asText();
+
+        mockMvc.perform(get("/api/v1/employees/" + empA1.getId())
+                        .header("Authorization", "Bearer " + adminAToken))
+                .andExpect(jsonPath("$.estadoLiquidacion").value("PENDIENTE"));
+
+        mockMvc.perform(delete(BASE_URL + "/" + advanceId)
+                        .header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/v1/employees/" + empA1.getId())
+                        .header("Authorization", "Bearer " + adminAToken))
+                .andExpect(jsonPath("$.estadoLiquidacion").value("AL_DIA"));
+    }
+
+    @Test
+    void deleteNoRevierteEstadoLiquidacionSiQuedanOtrosPendientes() throws Exception {
+        String resp1 = mockMvc.perform(post(BASE_URL)
+                        .header("Authorization", "Bearer " + adminAToken)
+                        .contentType("application/json")
+                        .content(buildCreateBody(empA1.getId(), "2026-08-01", "1000.00", "Adelanto 1")))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String advanceId1 = objectMapper.readTree(resp1).get("id").asText();
+
+        mockMvc.perform(post(BASE_URL)
+                        .header("Authorization", "Bearer " + adminAToken)
+                        .contentType("application/json")
+                        .content(buildCreateBody(empA1.getId(), "2026-08-05", "500.00", "Adelanto 2")))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(delete(BASE_URL + "/" + advanceId1)
+                        .header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/v1/employees/" + empA1.getId())
+                        .header("Authorization", "Bearer " + adminAToken))
+                .andExpect(jsonPath("$.estadoLiquidacion").value("PENDIENTE"));
+    }
+
+    @Test
+    void cancelRevierteEstadoLiquidacionSiEraElUnicoPendiente() throws Exception {
+        String resp = mockMvc.perform(post(BASE_URL)
+                        .header("Authorization", "Bearer " + adminAToken)
+                        .contentType("application/json")
+                        .content(buildCreateBody(empA1.getId(), "2026-08-01", "1000.00", "Único adelanto")))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String advanceId = objectMapper.readTree(resp).get("id").asText();
+
+        mockMvc.perform(patch(BASE_URL + "/" + advanceId + "/cancel")
+                        .header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/employees/" + empA1.getId())
+                        .header("Authorization", "Bearer " + adminAToken))
+                .andExpect(jsonPath("$.estadoLiquidacion").value("AL_DIA"));
+    }
+
+    @Test
+    void cancelNoRevierteEstadoLiquidacionSiQuedanOtrosPendientes() throws Exception {
+        String resp1 = mockMvc.perform(post(BASE_URL)
+                        .header("Authorization", "Bearer " + adminAToken)
+                        .contentType("application/json")
+                        .content(buildCreateBody(empA1.getId(), "2026-08-01", "1000.00", "Adelanto 1")))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String advanceId1 = objectMapper.readTree(resp1).get("id").asText();
+
+        mockMvc.perform(post(BASE_URL)
+                        .header("Authorization", "Bearer " + adminAToken)
+                        .contentType("application/json")
+                        .content(buildCreateBody(empA1.getId(), "2026-08-05", "500.00", "Adelanto 2")))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(patch(BASE_URL + "/" + advanceId1 + "/cancel")
+                        .header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/employees/" + empA1.getId())
+                        .header("Authorization", "Bearer " + adminAToken))
+                .andExpect(jsonPath("$.estadoLiquidacion").value("PENDIENTE"));
+    }
+
+    @Test
     void deleteOnDescontadoReturns409() throws Exception {
         Advance advance = createAdvance(empA1, LocalDate.of(2026, 8, 1), new BigDecimal("1000.00"), EstadoAdelanto.DESCONTADO);
 

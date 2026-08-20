@@ -97,9 +97,17 @@ public class BranchService {
 
     /**
      * ADMIN/RRHH ven cualquier sucursal de la empresa. SUPERVISOR solo las
-     * que tiene asignadas (principal.getBranchIds(), viene del JWT).
+     * que tiene asignadas (principal.getBranchIds(), viene del JWT). EMPLOYEE
+     * no tiene acceso a este recurso — sin este chequeo explícito, el `else`
+     * genérico lo trataría como "ve cualquier sucursal" (issue #164, mismo
+     * patrón que AUD-03 corrigió en EmployeeResolver). Hoy es inalcanzable
+     * porque `@PreAuthorize` en BranchController ya excluye EMPLOYEE de los
+     * 5 endpoints — defensa en profundidad, no por un bug activo conocido.
      */
     private boolean isInScope(Branch branch, StafflyUserPrincipal principal) {
+        if (principal.getRol() == Rol.EMPLOYEE) {
+            return false;
+        }
         if (principal.getRol() != Rol.SUPERVISOR) {
             return true;
         }
