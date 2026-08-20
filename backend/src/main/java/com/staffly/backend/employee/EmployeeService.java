@@ -18,6 +18,7 @@ import com.staffly.backend.user.User;
 import com.staffly.backend.user.UserRepository;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -61,6 +62,15 @@ public class EmployeeService {
 
     @Transactional(readOnly = true)
     public List<EmployeeResponse> list(EstadoLaboral estadoLaboral, UUID branchId, String search, StafflyUserPrincipal principal) {
+        // Sin esta rama explícita, un EMPLOYEE vería el listado completo de
+        // empleados de la empresa — listSpecification() no tiene ningún
+        // predicado que lo restrinja (issue #164, mismo patrón que AUD-03
+        // corrigió en EmployeeResolver). Hoy inalcanzable vía HTTP porque
+        // `@PreAuthorize` en el controller ya excluye EMPLOYEE; /employees/me
+        // es la vía real de auto-consulta para ese rol.
+        if (principal.getRol() == Rol.EMPLOYEE) {
+            throw new AccessDeniedException("No tenés permisos para esta operación — usá /employees/me");
+        }
         if (principal.getRol() == Rol.SUPERVISOR && principal.getBranchIds().isEmpty()) {
             // sin sucursales asignadas no hay nada visible — y evita un
             // IN () vacío inválido en SQL

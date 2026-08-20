@@ -46,6 +46,21 @@ class EmployeeServiceTest {
                 .isInstanceOf(AccessDeniedException.class);
     }
 
+    @Test
+    void employeeRoleCannotListAllEmployeesRegardlessOfController() {
+        UUID companyId = createCompany();
+        Branch branch = createBranch(companyId);
+        createEmployee(companyId, branch);
+
+        // issue #164 (seguimiento de AUD-03): sin defensa propia, list()
+        // dejaba ver el listado completo de la empresa a un EMPLOYEE.
+        StafflyUserPrincipal employeePrincipal =
+                new StafflyUserPrincipal(UUID.randomUUID(), companyId, Rol.EMPLOYEE, List.of());
+
+        assertThatThrownBy(() -> employeeService.list(null, null, null, employeePrincipal))
+                .isInstanceOf(AccessDeniedException.class);
+    }
+
     private UUID createCompany() {
         Company c = new Company();
         c.setNombre("Empresa Test");
