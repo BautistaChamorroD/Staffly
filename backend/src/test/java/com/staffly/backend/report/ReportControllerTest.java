@@ -1,6 +1,8 @@
 package com.staffly.backend.report;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.staffly.backend.advance.Advance;
+import com.staffly.backend.advance.EstadoAdelanto;
 import com.staffly.backend.branch.Branch;
 import com.staffly.backend.branch.EstadoSucursal;
 import com.staffly.backend.company.Company;
@@ -358,6 +360,84 @@ class ReportControllerTest {
                 .andExpect(jsonPath("$.length()").value(0));
     }
 
+    // ── RBAC pending-advances ────────────────────────────────────────────────
+
+    @Test
+    void adminPuedeConsultarPendingAdvances() throws Exception {
+        mockMvc.perform(get(BASE_URL + "/pending-advances").header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void rrhhPuedeConsultarPendingAdvances() throws Exception {
+        mockMvc.perform(get(BASE_URL + "/pending-advances").header("Authorization", "Bearer " + rrhhAToken))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void supervisorNoPuedeConsultarPendingAdvances() throws Exception {
+        mockMvc.perform(get(BASE_URL + "/pending-advances").header("Authorization", "Bearer " + supervisorAToken))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void employeeNoPuedeConsultarPendingAdvances() throws Exception {
+        mockMvc.perform(get(BASE_URL + "/pending-advances").header("Authorization", "Bearer " + empToken1))
+                .andExpect(status().isForbidden());
+    }
+
+    // ── cálculo pending-advances ─────────────────────────────────────────────
+
+    @Test
+    void adelantoPendienteApareceEnElReporte() throws Exception {
+        Advance adv = createAdvance(companyAId, emp1, EstadoAdelanto.PENDIENTE,
+                LocalDate.of(2026, 7, 15), BigDecimal.valueOf(50_000), "Adelanto de sueldo");
+
+        mockMvc.perform(get(BASE_URL + "/pending-advances").header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].id").value(adv.getId().toString()))
+                .andExpect(jsonPath("$[0].employeeId").value(emp1.getId().toString()))
+                .andExpect(jsonPath("$[0].employeeNombre").value("Juan"))
+                .andExpect(jsonPath("$[0].employeeApellido").value("Pérez"))
+                .andExpect(jsonPath("$[0].monto").value(50000.0))
+                .andExpect(jsonPath("$[0].fecha").value("2026-07-15"))
+                .andExpect(jsonPath("$[0].motivo").value("Adelanto de sueldo"));
+    }
+
+    @Test
+    void adelantoDescontadoNoContabiliza() throws Exception {
+        createAdvance(companyAId, emp1, EstadoAdelanto.DESCONTADO,
+                LocalDate.of(2026, 7, 15), BigDecimal.valueOf(50_000), "Ya descontado");
+
+        mockMvc.perform(get(BASE_URL + "/pending-advances").header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
+    void adelantoCanceladoNoContabiliza() throws Exception {
+        createAdvance(companyAId, emp1, EstadoAdelanto.CANCELADO,
+                LocalDate.of(2026, 7, 15), BigDecimal.valueOf(50_000), "Cancelado");
+
+        mockMvc.perform(get(BASE_URL + "/pending-advances").header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
+    void tenantIsolationPendingAdvances() throws Exception {
+        UUID companyBId = createCompany("Empresa B Adelantos");
+        Branch branchB = createBranch(companyBId, "Sucursal B");
+        Employee empB = createEmployee(companyBId, branchB, "Otro", "Empleado");
+        createAdvance(companyBId, empB, EstadoAdelanto.PENDIENTE,
+                LocalDate.of(2026, 7, 15), BigDecimal.valueOf(10_000), "Otro adelanto");
+
+        mockMvc.perform(get(BASE_URL + "/pending-advances").header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
     // ── helpers ───────────────────────────────────────────────────────────────
 
     private UUID createCompany(String nombre) {
@@ -467,6 +547,20 @@ class ReportControllerTest {
         entityManager.persist(p);
         entityManager.flush();
         return p;
+    }
+
+    private Advance createAdvance(UUID companyId, Employee emp, EstadoAdelanto estado,
+                                  LocalDate fecha, BigDecimal monto, String motivo) {
+        Advance a = new Advance();
+        a.setCompanyId(companyId);
+        a.setEmployee(emp);
+        a.setFecha(fecha);
+        a.setMonto(monto);
+        a.setMotivo(motivo);
+        a.setEstado(estado);
+        entityManager.persist(a);
+        entityManager.flush();
+        return a;
     }
 
     private String createUserAndLogin(UUID companyId, String email, RolUsuario rol,

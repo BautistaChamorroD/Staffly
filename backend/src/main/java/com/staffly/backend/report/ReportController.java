@@ -2,6 +2,7 @@ package com.staffly.backend.report;
 
 import com.staffly.backend.report.dto.HoursWorkedRow;
 import com.staffly.backend.report.dto.PayrollCostRow;
+import com.staffly.backend.report.dto.PendingAdvanceRow;
 import com.staffly.backend.security.StafflyUserPrincipal;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -22,11 +23,14 @@ public class ReportController {
 
     private final HoursWorkedReportService hoursWorkedReportService;
     private final PayrollCostReportService payrollCostReportService;
+    private final PendingAdvancesReportService pendingAdvancesReportService;
 
     public ReportController(HoursWorkedReportService hoursWorkedReportService,
-                            PayrollCostReportService payrollCostReportService) {
+                            PayrollCostReportService payrollCostReportService,
+                            PendingAdvancesReportService pendingAdvancesReportService) {
         this.hoursWorkedReportService = hoursWorkedReportService;
         this.payrollCostReportService = payrollCostReportService;
+        this.pendingAdvancesReportService = pendingAdvancesReportService;
     }
 
     @GetMapping("/hours-worked")
@@ -49,5 +53,12 @@ public class ReportController {
             @AuthenticationPrincipal StafflyUserPrincipal principal) {
         return ResponseEntity.ok(
                 payrollCostReportService.generate(principal.getCompanyId(), branchId, desde, hasta));
+    }
+
+    @GetMapping("/pending-advances")
+    @PreAuthorize("hasAnyRole('ADMIN', 'RRHH')")
+    public ResponseEntity<List<PendingAdvanceRow>> pendingAdvances(
+            @AuthenticationPrincipal StafflyUserPrincipal principal) {
+        return ResponseEntity.ok(pendingAdvancesReportService.generate(principal.getCompanyId()));
     }
 }
