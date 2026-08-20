@@ -57,4 +57,12 @@ public class AdvanceController {
         advanceService.delete(id, principal);
         return ResponseEntity.noContent().build();
     }
+
+    @PatchMapping("/{id}/cancel")
+    @PreAuthorize("hasAnyRole('ADMIN', 'RRHH')")
+    public ResponseEntity<AdvanceResponse> cancel(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal StafflyUserPrincipal principal) {
+        return ResponseEntity.ok(advanceService.cancel(id, principal));
+    }
 }

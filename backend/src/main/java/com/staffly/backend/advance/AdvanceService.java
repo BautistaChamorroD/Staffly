@@ -103,6 +103,31 @@ public class AdvanceService {
         advanceRepository.delete(advance);
     }
 
+    /**
+     * Cancela un adelanto sin eliminarlo (AUD-36 / issue #157): a diferencia de
+     * {@link #delete}, que borra el registro (pensado para "error de carga"),
+     * este método lo conserva con {@code estado=CANCELADO} — queda auditable
+     * vía {@code GET /audit-log} en vez de desaparecer sin rastro.
+     */
+    @Transactional
+    public AdvanceResponse cancel(UUID id, StafflyUserPrincipal principal) {
+        Advance advance = advanceRepository.findByIdAndCompanyId(id, principal.getCompanyId())
+                .orElseThrow(() -> new ResourceNotFoundException("No se encontró el adelanto"));
+
+        if (advance.getEstado() == EstadoAdelanto.DESCONTADO) {
+            throw new ConflictException("No se puede cancelar un adelanto ya descontado en una liquidación");
+        }
+        if (advance.getEstado() == EstadoAdelanto.CANCELADO) {
+            throw new BadRequestException("El adelanto ya fue cancelado");
+        }
+
+        String estadoAnterior = advance.getEstado().name();
+        advance.setEstado(EstadoAdelanto.CANCELADO);
+        Advance saved = advanceRepository.save(advance);
+        publishFieldChange(saved, principal, "estado", estadoAnterior, EstadoAdelanto.CANCELADO.name());
+        return AdvanceResponse.from(saved);
+    }
+
     // ── helpers ───────────────────────────────────────────────────────────────
 
     private void publishFieldChange(

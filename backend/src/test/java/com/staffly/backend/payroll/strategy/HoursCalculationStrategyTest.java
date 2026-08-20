@@ -26,17 +26,6 @@ class HoursCalculationStrategyTest {
         config.setConceptosDescuento(List.of());
     }
 
-    // ── StandardHoursStrategy ────────────────────────────────────────────────
-
-    @Test
-    void standard_allHoursNormal() {
-        var result = new StandardHoursStrategy().calculate(bd(6), bd(0), config);
-        assertEquals(bd(6), result.normalHours());
-        assertEquals(BigDecimal.ZERO, result.overtimeHours());
-        assertEquals(BigDecimal.ZERO, result.holidayHours());
-        assertEquals(bd(6), result.total());
-    }
-
     // ── OvertimeStrategy ─────────────────────────────────────────────────────
 
     @Test

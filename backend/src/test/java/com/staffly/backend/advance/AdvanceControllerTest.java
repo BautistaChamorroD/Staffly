@@ -231,6 +231,67 @@ class AdvanceControllerTest {
     }
 
     @Test
+    void cancelWorksOnPendienteAndPublishesAuditEntry() throws Exception {
+        Advance advance = createAdvance(empA1, LocalDate.of(2026, 8, 1), new BigDecimal("1000.00"), EstadoAdelanto.PENDIENTE);
+
+        mockMvc.perform(patch(BASE_URL + "/" + advance.getId() + "/cancel")
+                        .header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estado").value("CANCELADO"));
+
+        mockMvc.perform(get(BASE_URL + "/" + advance.getId())
+                        .header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estado").value("CANCELADO"));
+
+        mockMvc.perform(get("/api/v1/audit-log?entidad=ADVANCE&entidadId=" + advance.getId())
+                        .header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].campo").value("estado"))
+                .andExpect(jsonPath("$[0].valorAnterior").value("PENDIENTE"))
+                .andExpect(jsonPath("$[0].valorNuevo").value("CANCELADO"));
+    }
+
+    @Test
+    void rrhhCanCancelAdvance() throws Exception {
+        Advance advance = createAdvance(empA1, LocalDate.of(2026, 8, 1), new BigDecimal("1000.00"), EstadoAdelanto.PENDIENTE);
+
+        mockMvc.perform(patch(BASE_URL + "/" + advance.getId() + "/cancel")
+                        .header("Authorization", "Bearer " + rrhhAToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estado").value("CANCELADO"));
+    }
+
+    @Test
+    void cancelOnDescontadoReturns409() throws Exception {
+        Advance advance = createAdvance(empA1, LocalDate.of(2026, 8, 1), new BigDecimal("1000.00"), EstadoAdelanto.DESCONTADO);
+
+        mockMvc.perform(patch(BASE_URL + "/" + advance.getId() + "/cancel")
+                        .header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void cancelOnAlreadyCanceladoReturns400() throws Exception {
+        Advance advance = createAdvance(empA1, LocalDate.of(2026, 8, 1), new BigDecimal("1000.00"), EstadoAdelanto.CANCELADO);
+
+        mockMvc.perform(patch(BASE_URL + "/" + advance.getId() + "/cancel")
+                        .header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void employeeCannotCancel() throws Exception {
+        Advance advance = createAdvance(empA1, LocalDate.of(2026, 8, 1), new BigDecimal("1000.00"), EstadoAdelanto.PENDIENTE);
+        String empToken = createUserAndLogin(companyAId, "emp1@a.com", RolUsuario.EMPLOYEE, empA1);
+
+        mockMvc.perform(patch(BASE_URL + "/" + advance.getId() + "/cancel")
+                        .header("Authorization", "Bearer " + empToken))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void tenantIsolation() throws Exception {
         createAdvance(empA1, LocalDate.of(2026, 8, 1), new BigDecimal("1000.00"), EstadoAdelanto.PENDIENTE);
 
