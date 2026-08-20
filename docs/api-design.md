@@ -239,7 +239,8 @@ Response 201 incluye la empresa creada y confirma el envío/generación de contr
 | GET | `/advances` | Lista adelantos. Filtros: `?employeeId=`, `?estado=`. | ADMIN, RRHH, EMPLOYEE (solo los propios — scope forzado server-side, ignora `?employeeId=`) |
 | POST | `/advances` | Registra un adelanto (RF-19). | ADMIN, RRHH |
 | GET | `/advances/{id}` | Detalle de un adelanto. | ADMIN, RRHH, EMPLOYEE (si es propio) |
-| DELETE | `/advances/{id}` | Elimina un adelanto no descontado aún (por error de carga). | ADMIN, RRHH |
+| DELETE | `/advances/{id}` | Elimina permanentemente un adelanto no descontado aún (por error de carga). | ADMIN, RRHH |
+| PATCH | `/advances/{id}/cancel` | Cancela un adelanto no descontado aún (marca `estado=CANCELADO`, queda auditable en `/audit-log` en vez de desaparecer). Responde **409** si ya fue descontado. | ADMIN, RRHH |
 
 ---
 
