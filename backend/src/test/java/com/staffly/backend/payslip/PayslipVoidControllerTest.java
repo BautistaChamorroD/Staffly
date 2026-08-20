@@ -37,6 +37,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -94,6 +95,14 @@ class PayslipVoidControllerTest {
         Payslip refreshed = entityManager.find(Payslip.class, original.getId());
         assertThat(refreshed.getEstado()).isEqualTo(EstadoRecibo.ANULADO);
         assertThat(refreshed.getMotivoAnulacion()).isEqualTo("Error en horas");
+
+        mockMvc.perform(get("/api/v1/audit-log?entidad=PAYSLIP&entidadId=" + original.getId())
+                        .header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].campo").value("estado"))
+                .andExpect(jsonPath("$[0].valorAnterior").value("PAGADO"))
+                .andExpect(jsonPath("$[0].valorNuevo").value("ANULADO"));
     }
 
     @Test

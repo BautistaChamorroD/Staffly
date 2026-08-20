@@ -314,6 +314,14 @@ class LeaveRequestControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.estado").value("APROBADA"))
                 .andExpect(jsonPath("$.aprobadoPorId").value(adminAId.toString()));
+
+        mockMvc.perform(get("/api/v1/audit-log?entidad=LEAVE_REQUEST&entidadId=" + id)
+                        .header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].campo").value("estado"))
+                .andExpect(jsonPath("$[0].valorAnterior").value("PENDIENTE"))
+                .andExpect(jsonPath("$[0].valorNuevo").value("APROBADA"));
     }
 
     @Test

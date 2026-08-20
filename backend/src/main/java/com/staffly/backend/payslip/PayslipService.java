@@ -6,6 +6,7 @@ import com.staffly.backend.advance.EstadoAdelanto;
 import com.staffly.backend.common.BadRequestException;
 import com.staffly.backend.common.ResourceNotFoundException;
 import com.staffly.backend.common.UnprocessableEntityException;
+import com.staffly.backend.common.audit.AuditableFieldChangedEvent;
 import com.staffly.backend.employee.Employee;
 import com.staffly.backend.holiday.HolidayRepository;
 import com.staffly.backend.leave.EstadoLicencia;
@@ -24,6 +25,7 @@ import com.staffly.backend.schedule.ScheduleRepository;
 import com.staffly.backend.security.Rol;
 import com.staffly.backend.security.StafflyUserPrincipal;
 import com.staffly.backend.user.UserRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +37,9 @@ import java.util.stream.Collectors;
 @Service
 public class PayslipService {
 
+    /** Discriminador de Payslip en la tabla genérica audit_log. */
+    private static final String AUDIT_ENTITY_TYPE = "PAYSLIP";
+
     private final PayslipRepository       payslipRepository;
     private final UserRepository          userRepository;
     private final PayrollConfigRepository configRepository;
@@ -42,6 +47,7 @@ public class PayslipService {
     private final LeaveRequestRepository  leaveRequestRepository;
     private final HolidayRepository       holidayRepository;
     private final AdvanceRepository       advanceRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     public PayslipService(PayslipRepository payslipRepository,
                           UserRepository userRepository,
@@ -49,7 +55,8 @@ public class PayslipService {
                           ScheduleRepository scheduleRepository,
                           LeaveRequestRepository leaveRequestRepository,
                           HolidayRepository holidayRepository,
-                          AdvanceRepository advanceRepository) {
+                          AdvanceRepository advanceRepository,
+                          ApplicationEventPublisher eventPublisher) {
         this.payslipRepository     = payslipRepository;
         this.userRepository        = userRepository;
         this.configRepository      = configRepository;
@@ -57,6 +64,7 @@ public class PayslipService {
         this.leaveRequestRepository = leaveRequestRepository;
         this.holidayRepository     = holidayRepository;
         this.advanceRepository     = advanceRepository;
+        this.eventPublisher        = eventPublisher;
     }
 
     @Transactional(readOnly = true)
@@ -94,12 +102,15 @@ public class PayslipService {
 
         PayslipStateTransition.validate(payslip.getEstado(), EstadoRecibo.PAGADO);
 
+        String estadoAnterior = payslip.getEstado().name();
         payslip.setEstado(EstadoRecibo.PAGADO);
         payslip.setFechaPago(request != null && request.fechaPago() != null
                 ? request.fechaPago()
                 : LocalDate.now());
 
-        return PayslipResponse.from(payslipRepository.save(payslip));
+        Payslip saved = payslipRepository.save(payslip);
+        publishFieldChange(saved, principal, "estado", estadoAnterior, EstadoRecibo.PAGADO.name());
+        return PayslipResponse.from(saved);
     }
 
     @Transactional
@@ -118,6 +129,7 @@ public class PayslipService {
         original.setEstado(EstadoRecibo.ANULADO);
         original.setMotivoAnulacion(request != null ? request.motivoAnulacion() : null);
         payslipRepository.save(original);
+        publishFieldChange(original, principal, "estado", EstadoRecibo.PAGADO.name(), EstadoRecibo.ANULADO.name());
 
         Employee      employee = original.getEmployee();
         PayrollPeriod period   = original.getPayrollPeriod();
@@ -155,6 +167,13 @@ public class PayslipService {
     }
 
     // ── helpers ───────────────────────────────────────────────────────────────
+
+    private void publishFieldChange(
+            Payslip payslip, StafflyUserPrincipal principal, String campo, String valorAnterior, String valorNuevo) {
+        eventPublisher.publishEvent(new AuditableFieldChangedEvent(
+                principal.getCompanyId(), AUDIT_ENTITY_TYPE, payslip.getId(),
+                principal.getUserId(), campo, valorAnterior, valorNuevo));
+    }
 
     private Payslip findVisibleOrThrow(UUID id, StafflyUserPrincipal principal) {
         Payslip p = payslipRepository.findByIdAndCompanyId(id, principal.getCompanyId())

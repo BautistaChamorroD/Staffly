@@ -5,12 +5,14 @@ import com.staffly.backend.advance.dto.CreateAdvanceRequest;
 import com.staffly.backend.common.BadRequestException;
 import com.staffly.backend.common.ConflictException;
 import com.staffly.backend.common.ResourceNotFoundException;
+import com.staffly.backend.common.audit.AuditableFieldChangedEvent;
 import com.staffly.backend.employee.Employee;
 import com.staffly.backend.employee.EmployeeRepository;
 import com.staffly.backend.employee.EstadoLiquidacion;
 import com.staffly.backend.security.Rol;
 import com.staffly.backend.security.StafflyUserPrincipal;
 import com.staffly.backend.user.UserRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,16 +23,22 @@ import java.util.stream.Collectors;
 @Service
 public class AdvanceService {
 
+    /** Discriminador de Advance en la tabla genérica audit_log. */
+    private static final String AUDIT_ENTITY_TYPE = "ADVANCE";
+
     private final AdvanceRepository advanceRepository;
     private final EmployeeRepository employeeRepository;
     private final UserRepository userRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     public AdvanceService(AdvanceRepository advanceRepository,
                           EmployeeRepository employeeRepository,
-                          UserRepository userRepository) {
+                          UserRepository userRepository,
+                          ApplicationEventPublisher eventPublisher) {
         this.advanceRepository = advanceRepository;
         this.employeeRepository = employeeRepository;
         this.userRepository = userRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional(readOnly = true)
@@ -74,7 +82,9 @@ public class AdvanceService {
         advance.setMotivo(request.motivo());
         advance.setEstado(EstadoAdelanto.PENDIENTE);
 
-        return AdvanceResponse.from(advanceRepository.save(advance));
+        Advance saved = advanceRepository.save(advance);
+        publishFieldChange(saved, principal, "estado", null, EstadoAdelanto.PENDIENTE.name());
+        return AdvanceResponse.from(saved);
     }
 
     @Transactional
@@ -89,10 +99,18 @@ public class AdvanceService {
             throw new BadRequestException("El adelanto ya fue cancelado");
         }
 
+        publishFieldChange(advance, principal, "estado", advance.getEstado().name(), "ELIMINADO");
         advanceRepository.delete(advance);
     }
 
     // ── helpers ───────────────────────────────────────────────────────────────
+
+    private void publishFieldChange(
+            Advance advance, StafflyUserPrincipal principal, String campo, String valorAnterior, String valorNuevo) {
+        eventPublisher.publishEvent(new AuditableFieldChangedEvent(
+                principal.getCompanyId(), AUDIT_ENTITY_TYPE, advance.getId(),
+                principal.getUserId(), campo, valorAnterior, valorNuevo));
+    }
 
     private Employee resolveEmployee(UUID requestedEmployeeId, StafflyUserPrincipal principal) {
         UUID companyId = principal.getCompanyId();

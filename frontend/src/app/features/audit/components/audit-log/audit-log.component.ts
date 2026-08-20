@@ -25,8 +25,6 @@ export class AuditLogComponent implements OnInit {
   filterDesde = '';
   filterHasta = '';
 
-  expandedId: string | null = null;
-
   ngOnInit(): void {
     this.load();
   }
@@ -53,7 +51,6 @@ export class AuditLogComponent implements OnInit {
   }
 
   applyFilters(): void {
-    this.expandedId = null;
     this.load();
   }
 
@@ -63,19 +60,6 @@ export class AuditLogComponent implements OnInit {
     this.filterUserId = '';
     this.filterDesde = '';
     this.filterHasta = '';
-    this.expandedId = null;
     this.load();
-  }
-
-  toggleExpand(id: string): void {
-    this.expandedId = this.expandedId === id ? null : id;
-  }
-
-  hasChanges(entry: AuditLogEntry): boolean {
-    return entry.cambios !== null && Object.keys(entry.cambios).length > 0;
-  }
-
-  formatChanges(entry: AuditLogEntry): string {
-    return JSON.stringify(entry.cambios, null, 2);
   }
 }

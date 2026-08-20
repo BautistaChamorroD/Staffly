@@ -3,6 +3,7 @@ package com.staffly.backend.leave;
 import com.staffly.backend.common.BadRequestException;
 import com.staffly.backend.common.LeaveApprovalConflictException;
 import com.staffly.backend.common.ResourceNotFoundException;
+import com.staffly.backend.common.audit.AuditableFieldChangedEvent;
 import com.staffly.backend.employee.Employee;
 import com.staffly.backend.employee.EmployeeRepository;
 import com.staffly.backend.leave.dto.CreateLeaveRequestRequest;
@@ -14,6 +15,7 @@ import com.staffly.backend.schedule.dto.ScheduleResponse;
 import com.staffly.backend.security.Rol;
 import com.staffly.backend.security.StafflyUserPrincipal;
 import com.staffly.backend.user.UserRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,23 +28,29 @@ import java.util.stream.Collectors;
 @Service
 public class LeaveRequestService {
 
+    /** Discriminador de LeaveRequest en la tabla genérica audit_log. */
+    private static final String AUDIT_ENTITY_TYPE = "LEAVE_REQUEST";
+
     private final LeaveRequestRepository leaveRequestRepository;
     private final LeaveTypeRepository leaveTypeRepository;
     private final EmployeeRepository employeeRepository;
     private final UserRepository userRepository;
     private final ScheduleRepository scheduleRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     public LeaveRequestService(
             LeaveRequestRepository leaveRequestRepository,
             LeaveTypeRepository leaveTypeRepository,
             EmployeeRepository employeeRepository,
             UserRepository userRepository,
-            ScheduleRepository scheduleRepository) {
+            ScheduleRepository scheduleRepository,
+            ApplicationEventPublisher eventPublisher) {
         this.leaveRequestRepository = leaveRequestRepository;
         this.leaveTypeRepository = leaveTypeRepository;
         this.employeeRepository = employeeRepository;
         this.userRepository = userRepository;
         this.scheduleRepository = scheduleRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional(readOnly = true)
@@ -125,7 +133,9 @@ public class LeaveRequestService {
 
         lr.setEstado(EstadoLicencia.APROBADA);
         lr.setAprobadoPor(principal.getUserId());
-        return LeaveRequestResponse.from(leaveRequestRepository.save(lr));
+        LeaveRequest saved = leaveRequestRepository.save(lr);
+        publishFieldChange(saved, principal, "estado", EstadoLicencia.PENDIENTE.name(), EstadoLicencia.APROBADA.name());
+        return LeaveRequestResponse.from(saved);
     }
 
     @Transactional
@@ -138,7 +148,9 @@ public class LeaveRequestService {
 
         lr.setEstado(EstadoLicencia.RECHAZADA);
         lr.setMotivoRechazo(request.motivo());
-        return LeaveRequestResponse.from(leaveRequestRepository.save(lr));
+        LeaveRequest saved = leaveRequestRepository.save(lr);
+        publishFieldChange(saved, principal, "estado", EstadoLicencia.PENDIENTE.name(), EstadoLicencia.RECHAZADA.name());
+        return LeaveRequestResponse.from(saved);
     }
 
     @Transactional
@@ -161,11 +173,21 @@ public class LeaveRequestService {
             }
         }
 
+        String estadoAnterior = lr.getEstado().name();
         lr.setEstado(EstadoLicencia.CANCELADA);
-        return LeaveRequestResponse.from(leaveRequestRepository.save(lr));
+        LeaveRequest saved = leaveRequestRepository.save(lr);
+        publishFieldChange(saved, principal, "estado", estadoAnterior, EstadoLicencia.CANCELADA.name());
+        return LeaveRequestResponse.from(saved);
     }
 
     // ── helpers privados ──────────────────────────────────────────────────────
+
+    private void publishFieldChange(
+            LeaveRequest lr, StafflyUserPrincipal principal, String campo, String valorAnterior, String valorNuevo) {
+        eventPublisher.publishEvent(new AuditableFieldChangedEvent(
+                principal.getCompanyId(), AUDIT_ENTITY_TYPE, lr.getId(),
+                principal.getUserId(), campo, valorAnterior, valorNuevo));
+    }
 
     /**
      * Resuelve el Employee para la creación. EMPLOYEE solo puede crear para sí mismo
