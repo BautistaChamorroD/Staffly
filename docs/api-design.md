@@ -201,6 +201,7 @@ Response 201 incluye la empresa creada y confirma el envío/generación de contr
 | GET | `/leave-types` | Lista tipos de licencia configurados (RF-15b). | ADMIN, RRHH, SUPERVISOR, EMPLOYEE |
 | POST | `/leave-types` | Crea un tipo de licencia. | ADMIN |
 | PATCH | `/leave-types/{id}` | Edita un tipo de licencia. | ADMIN |
+| DELETE | `/leave-types/{id}` | Elimina un tipo de licencia. | ADMIN |
 | GET | `/leave-requests` | Lista solicitudes. Filtros: `?employeeId=`, `?estado=`. | ADMIN, RRHH, SUPERVISOR (sus sucursales), EMPLOYEE (las suyas) |
 | POST | `/leave-requests` | Crea una solicitud de licencia (RF-15c), estado inicial `PENDIENTE`. | EMPLOYEE (propia), ADMIN, RRHH (a nombre de un empleado) |
 | GET | `/leave-requests/{id}` | Detalle de una solicitud. | ADMIN, RRHH, SUPERVISOR, EMPLOYEE (si es propia) |
@@ -235,7 +236,7 @@ Response 201 incluye la empresa creada y confirma el envío/generación de contr
 
 | Método | Endpoint | Descripción | Rol requerido |
 |---|---|---|---|
-| GET | `/advances` | Lista adelantos. Filtros: `?employeeId=`, `?estado=`. | ADMIN, RRHH |
+| GET | `/advances` | Lista adelantos. Filtros: `?employeeId=`, `?estado=`. | ADMIN, RRHH, EMPLOYEE (solo los propios — scope forzado server-side, ignora `?employeeId=`) |
 | POST | `/advances` | Registra un adelanto (RF-19). | ADMIN, RRHH |
 | GET | `/advances/{id}` | Detalle de un adelanto. | ADMIN, RRHH, EMPLOYEE (si es propio) |
 | DELETE | `/advances/{id}` | Elimina un adelanto no descontado aún (por error de carga). | ADMIN, RRHH |
