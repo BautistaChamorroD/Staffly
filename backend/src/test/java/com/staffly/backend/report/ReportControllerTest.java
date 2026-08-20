@@ -10,9 +10,14 @@ import com.staffly.backend.employee.EstadoLaboral;
 import com.staffly.backend.employee.EstadoLiquidacion;
 import com.staffly.backend.employee.TipoContrato;
 import com.staffly.backend.holiday.Holiday;
+import com.staffly.backend.payroll.EstadoPeriodo;
 import com.staffly.backend.payroll.PayrollConfig;
+import com.staffly.backend.payroll.PayrollPeriod;
 import com.staffly.backend.payroll.Periodicidad;
 import com.staffly.backend.payroll.TipoUmbral;
+import com.staffly.backend.payslip.EstadoRecibo;
+import com.staffly.backend.payslip.Payslip;
+import com.staffly.backend.payslip.TipoRecibo;
 import com.staffly.backend.schedule.EstadoTurno;
 import com.staffly.backend.schedule.Schedule;
 import com.staffly.backend.schedule.TipoTurno;
@@ -20,6 +25,7 @@ import com.staffly.backend.user.EstadoUsuario;
 import com.staffly.backend.user.RolUsuario;
 import com.staffly.backend.user.User;
 import com.staffly.backend.user.UserRepository;
+import java.util.List;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -215,6 +221,143 @@ class ReportControllerTest {
                 .andExpect(jsonPath("$.length()").value(0));
     }
 
+    // ── RBAC payroll-cost ────────────────────────────────────────────────────
+
+    @Test
+    void adminPuedeConsultarPayrollCost() throws Exception {
+        mockMvc.perform(get(BASE_URL + "/payroll-cost").header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void rrhhPuedeConsultarPayrollCost() throws Exception {
+        mockMvc.perform(get(BASE_URL + "/payroll-cost").header("Authorization", "Bearer " + rrhhAToken))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void supervisorNoPuedeConsultarPayrollCost() throws Exception {
+        mockMvc.perform(get(BASE_URL + "/payroll-cost").header("Authorization", "Bearer " + supervisorAToken))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void employeeNoPuedeConsultarPayrollCost() throws Exception {
+        mockMvc.perform(get(BASE_URL + "/payroll-cost").header("Authorization", "Bearer " + empToken1))
+                .andExpect(status().isForbidden());
+    }
+
+    // ── cálculo payroll-cost ─────────────────────────────────────────────────
+
+    @Test
+    void periodoCerrado_agrupaPorSucursal() throws Exception {
+        PayrollPeriod period = createPayrollPeriod(companyAId, EstadoPeriodo.CERRADO,
+                LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 31));
+        createPayslip(companyAId, emp1, period, EstadoRecibo.PAGADO, TipoRecibo.NORMAL,
+                BigDecimal.valueOf(200_000), BigDecimal.valueOf(20_000), BigDecimal.valueOf(180_000));
+
+        mockMvc.perform(get(BASE_URL + "/payroll-cost?desde=2026-07-01&hasta=2026-07-31")
+                        .header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].branchId").value(branch1.getId().toString()))
+                .andExpect(jsonPath("$[0].cantidadEmpleados").value(1))
+                .andExpect(jsonPath("$[0].totalBruto").value(200000.0))
+                .andExpect(jsonPath("$[0].totalDeducciones").value(20000.0))
+                .andExpect(jsonPath("$[0].totalNeto").value(180000.0));
+    }
+
+    @Test
+    void periodoAbiertoNoContabiliza() throws Exception {
+        PayrollPeriod period = createPayrollPeriod(companyAId, EstadoPeriodo.ABIERTO,
+                LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 31));
+        createPayslip(companyAId, emp1, period, EstadoRecibo.GENERADO, TipoRecibo.NORMAL,
+                BigDecimal.valueOf(200_000), BigDecimal.valueOf(20_000), BigDecimal.valueOf(180_000));
+
+        mockMvc.perform(get(BASE_URL + "/payroll-cost?desde=2026-07-01&hasta=2026-07-31")
+                        .header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
+    void payslipAnuladoNoContabiliza() throws Exception {
+        PayrollPeriod period = createPayrollPeriod(companyAId, EstadoPeriodo.CERRADO,
+                LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 31));
+        createPayslip(companyAId, emp1, period, EstadoRecibo.ANULADO, TipoRecibo.NORMAL,
+                BigDecimal.valueOf(200_000), BigDecimal.valueOf(20_000), BigDecimal.valueOf(180_000));
+
+        mockMvc.perform(get(BASE_URL + "/payroll-cost?desde=2026-07-01&hasta=2026-07-31")
+                        .header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
+    void filtroBranchIdPayrollCostExcluyeOtrasSucursales() throws Exception {
+        Employee emp2 = createEmployee(companyAId, branch2, "Ana", "García");
+        PayrollPeriod period = createPayrollPeriod(companyAId, EstadoPeriodo.CERRADO,
+                LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 31));
+        createPayslip(companyAId, emp1, period, EstadoRecibo.PAGADO, TipoRecibo.NORMAL,
+                BigDecimal.valueOf(200_000), BigDecimal.valueOf(20_000), BigDecimal.valueOf(180_000));
+        createPayslip(companyAId, emp2, period, EstadoRecibo.PAGADO, TipoRecibo.NORMAL,
+                BigDecimal.valueOf(300_000), BigDecimal.valueOf(30_000), BigDecimal.valueOf(270_000));
+
+        mockMvc.perform(get(BASE_URL + "/payroll-cost?branchId=" + branch1.getId())
+                        .header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].branchId").value(branch1.getId().toString()))
+                .andExpect(jsonPath("$[0].totalBruto").value(200000.0));
+    }
+
+    @Test
+    void periodoFueraDelRangoNoContabiliza() throws Exception {
+        PayrollPeriod period = createPayrollPeriod(companyAId, EstadoPeriodo.CERRADO,
+                LocalDate.of(2026, 6, 1), LocalDate.of(2026, 6, 30));
+        createPayslip(companyAId, emp1, period, EstadoRecibo.PAGADO, TipoRecibo.NORMAL,
+                BigDecimal.valueOf(200_000), BigDecimal.valueOf(20_000), BigDecimal.valueOf(180_000));
+
+        mockMvc.perform(get(BASE_URL + "/payroll-cost?desde=2026-07-01&hasta=2026-07-31")
+                        .header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
+    void empleadoConDosSucursales_vaAGrupoSinSucursalUnica() throws Exception {
+        emp1.getBranches().add(branch2);
+        entityManager.merge(emp1);
+        entityManager.flush();
+
+        PayrollPeriod period = createPayrollPeriod(companyAId, EstadoPeriodo.CERRADO,
+                LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 31));
+        createPayslip(companyAId, emp1, period, EstadoRecibo.PAGADO, TipoRecibo.NORMAL,
+                BigDecimal.valueOf(200_000), BigDecimal.valueOf(20_000), BigDecimal.valueOf(180_000));
+
+        mockMvc.perform(get(BASE_URL + "/payroll-cost?desde=2026-07-01&hasta=2026-07-31")
+                        .header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].branchId").doesNotExist());
+    }
+
+    @Test
+    void tenantIsolationPayrollCost() throws Exception {
+        UUID companyBId = createCompany("Empresa B Costo");
+        Branch branchB = createBranch(companyBId, "Sucursal B");
+        Employee empB = createEmployee(companyBId, branchB, "Otro", "Empleado");
+        PayrollPeriod periodB = createPayrollPeriod(companyBId, EstadoPeriodo.CERRADO,
+                LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 31));
+        createPayslip(companyBId, empB, periodB, EstadoRecibo.PAGADO, TipoRecibo.NORMAL,
+                BigDecimal.valueOf(100_000), BigDecimal.valueOf(10_000), BigDecimal.valueOf(90_000));
+
+        mockMvc.perform(get(BASE_URL + "/payroll-cost?desde=2026-07-01&hasta=2026-07-31")
+                        .header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
     // ── helpers ───────────────────────────────────────────────────────────────
 
     private UUID createCompany(String nombre) {
@@ -286,6 +429,44 @@ class ReportControllerTest {
         entityManager.persist(s);
         entityManager.flush();
         return s;
+    }
+
+    private PayrollPeriod createPayrollPeriod(UUID companyId, EstadoPeriodo estado,
+                                              LocalDate fechaInicio, LocalDate fechaFin) {
+        PayrollPeriod p = new PayrollPeriod();
+        p.setCompanyId(companyId);
+        p.setFechaInicio(fechaInicio);
+        p.setFechaFin(fechaFin);
+        p.setEstado(estado);
+        entityManager.persist(p);
+        entityManager.flush();
+        return p;
+    }
+
+    private Payslip createPayslip(UUID companyId, Employee emp, PayrollPeriod period, EstadoRecibo estado,
+                                  TipoRecibo tipo, BigDecimal bruto, BigDecimal deducciones, BigDecimal neto) {
+        Payslip p = new Payslip();
+        p.setCompanyId(companyId);
+        p.setEmployee(emp);
+        p.setPayrollPeriod(period);
+        p.setEstado(estado);
+        p.setTipo(tipo);
+        p.setSueldoBase(emp.getSueldoBase());
+        p.setHorasNormales(BigDecimal.ZERO);
+        p.setHorasExtra(BigDecimal.ZERO);
+        p.setHorasFeriado(BigDecimal.ZERO);
+        p.setMontoHorasNormales(BigDecimal.ZERO);
+        p.setMontoHorasExtra(BigDecimal.ZERO);
+        p.setMontoHorasFeriado(BigDecimal.ZERO);
+        p.setBrutoCalculado(bruto);
+        p.setTotalDeducciones(deducciones);
+        p.setTotalAdelantos(BigDecimal.ZERO);
+        p.setNetoFinal(neto);
+        p.setDetalleDescuentos(List.of());
+        p.setAdelantosAplicados(List.of());
+        entityManager.persist(p);
+        entityManager.flush();
+        return p;
     }
 
     private String createUserAndLogin(UUID companyId, String email, RolUsuario rol,

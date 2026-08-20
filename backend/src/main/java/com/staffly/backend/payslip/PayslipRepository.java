@@ -4,6 +4,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -36,4 +37,22 @@ public interface PayslipRepository extends JpaRepository<Payslip, UUID> {
             @Param("companyId") UUID companyId,
             @Param("employeeId") UUID employeeId,
             @Param("periodId") UUID periodId);
+
+    /**
+     * Recibos de períodos CERRADOS para el reporte de costo de nómina
+     * (AUD-31 / issue #152) — excluye ANULADO a propósito (superseded por un
+     * AJUSTE, ver {@link #findNormalByCompanyIdAndEmployeeIdAndPayrollPeriodId}).
+     * desde/hasta son opcionales vía el mismo patrón `(:param IS NULL OR ...)`
+     * usado en {@code ScheduleRepository.findCumplidosForReport}, filtrando por
+     * solapamiento con el rango del período.
+     */
+    @Query("SELECT p FROM Payslip p JOIN FETCH p.employee JOIN FETCH p.payrollPeriod pp " +
+           "WHERE p.companyId = :companyId " +
+           "AND pp.estado = com.staffly.backend.payroll.EstadoPeriodo.CERRADO " +
+           "AND p.estado <> com.staffly.backend.payslip.EstadoRecibo.ANULADO " +
+           "AND (:desde IS NULL OR pp.fechaFin >= :desde) " +
+           "AND (:hasta IS NULL OR pp.fechaInicio <= :hasta)")
+    List<Payslip> findClosedForReport(@Param("companyId") UUID companyId,
+                                      @Param("desde") LocalDate desde,
+                                      @Param("hasta") LocalDate hasta);
 }
