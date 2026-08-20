@@ -97,6 +97,34 @@ class AdvanceControllerTest {
     }
 
     @Test
+    void creatingAndDeletingAdvancePublishesAuditEntries() throws Exception {
+        String resp = mockMvc.perform(post(BASE_URL)
+                        .header("Authorization", "Bearer " + adminAToken)
+                        .contentType("application/json")
+                        .content(buildCreateBody(empA1.getId(), "2026-08-01", "1500.00", "Pago anticipado")))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String advanceId = objectMapper.readTree(resp).get("id").asText();
+
+        mockMvc.perform(get("/api/v1/audit-log?entidad=ADVANCE&entidadId=" + advanceId)
+                        .header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].campo").value("estado"))
+                .andExpect(jsonPath("$[0].valorAnterior").doesNotExist())
+                .andExpect(jsonPath("$[0].valorNuevo").value("PENDIENTE"));
+
+        mockMvc.perform(delete(BASE_URL + "/" + advanceId)
+                        .header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/v1/audit-log?entidad=ADVANCE&entidadId=" + advanceId)
+                        .header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2));
+    }
+
+    @Test
     void rrhhCanCreateAdvance() throws Exception {
         mockMvc.perform(post(BASE_URL)
                         .header("Authorization", "Bearer " + rrhhAToken)

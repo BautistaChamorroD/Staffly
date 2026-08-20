@@ -4,7 +4,7 @@
   <!-- Filtros -->
   <div class="mb-6 rounded-xl border border-brand-line bg-brand-card p-5 shadow-sm">
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      <ui-input label="Entidad" placeholder="Ej: Employee, Branch..." [(ngModel)]="filterEntidad"></ui-input>
+      <ui-input label="Entidad" placeholder="Ej: EMPLOYEE, PAYSLIP..." [(ngModel)]="filterEntidad"></ui-input>
       <ui-input label="ID de entidad" placeholder="UUID..." [(ngModel)]="filterEntidadId"></ui-input>
       <ui-input label="ID de usuario" placeholder="UUID..." [(ngModel)]="filterUserId"></ui-input>
       <ui-input label="Desde" type="date" [(ngModel)]="filterDesde"></ui-input>
@@ -37,44 +37,25 @@
             <tr>
               <th class="px-4 py-3 text-left">Fecha / hora</th>
               <th class="px-4 py-3 text-left">Entidad</th>
-              <th class="px-4 py-3 text-left">Acción</th>
               <th class="px-4 py-3 text-left">Usuario</th>
-              <th class="px-4 py-3 text-left">Descripción</th>
-              <th class="px-4 py-3 text-center">Cambios</th>
+              <th class="px-4 py-3 text-left">Campo</th>
+              <th class="px-4 py-3 text-left">Valor anterior</th>
+              <th class="px-4 py-3 text-left">Valor nuevo</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-brand-line">
             @for (entry of entries; track entry.id) {
               <tr class="bg-brand-card">
-                <td class="px-4 py-3 font-mono text-xs text-brand-muted">{{ entry.timestamp }}</td>
+                <td class="px-4 py-3 font-mono text-xs text-brand-muted">{{ entry.fecha }}</td>
                 <td class="px-4 py-3">
-                  <span class="font-medium text-brand-ink">{{ entry.entidad }}</span>
-                  <span class="ml-1 font-mono text-xs text-brand-muted">{{ entry.entidadId }}</span>
+                  <span class="font-medium text-brand-ink">{{ entry.entityType }}</span>
+                  <span class="ml-1 font-mono text-xs text-brand-muted">{{ entry.entityId }}</span>
                 </td>
-                <td class="px-4 py-3 text-brand-ink">{{ entry.accion }}</td>
-                <td class="px-4 py-3 text-brand-ink">{{ entry.userName }}</td>
-                <td class="px-4 py-3 text-brand-muted">{{ entry.descripcion }}</td>
-                <td class="px-4 py-3 text-center">
-                  @if (hasChanges(entry)) {
-                    <button
-                      type="button"
-                      class="rounded px-2 py-0.5 text-xs font-medium text-brand-acc hover:underline"
-                      (click)="toggleExpand(entry.id)"
-                    >
-                      {{ expandedId === entry.id ? 'Ocultar' : 'Ver' }}
-                    </button>
-                  } @else {
-                    <span class="text-xs text-brand-muted">—</span>
-                  }
-                </td>
+                <td class="px-4 py-3 font-mono text-xs text-brand-muted">{{ entry.usuarioId }}</td>
+                <td class="px-4 py-3 text-brand-ink">{{ entry.campo }}</td>
+                <td class="px-4 py-3 text-brand-muted">{{ entry.valorAnterior ?? '—' }}</td>
+                <td class="px-4 py-3 text-brand-ink">{{ entry.valorNuevo ?? '—' }}</td>
               </tr>
-              @if (expandedId === entry.id) {
-                <tr class="bg-brand-card">
-                  <td colspan="6" class="px-4 pb-4 pt-0">
-                    <pre class="overflow-x-auto rounded-lg border border-brand-line bg-brand-bg p-3 text-xs text-brand-ink">{{ formatChanges(entry) }}</pre>
-                  </td>
-                </tr>
-              }
             }
           </tbody>
         </table>

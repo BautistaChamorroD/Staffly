@@ -1,13 +1,12 @@
 export interface AuditLogEntry {
   id: string;
-  entidad: string;
-  entidadId: string;
-  userId: string;
-  userName: string;
-  accion: string;
-  descripcion: string;
-  timestamp: string;
-  cambios: Record<string, unknown> | null;
+  entityType: string;
+  entityId: string;
+  usuarioId: string;
+  campo: string;
+  valorAnterior: string | null;
+  valorNuevo: string | null;
+  fecha: string;
 }
 
 export interface AuditLogFilters {
