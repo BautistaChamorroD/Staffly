@@ -83,6 +83,18 @@ public interface ScheduleRepository extends JpaRepository<Schedule, UUID> {
             @Param("desde") LocalDateTime desde,
             @Param("hasta") LocalDateTime hasta);
 
+    @Query("""
+        SELECT CASE WHEN COUNT(s) > 0 THEN true ELSE false END
+        FROM Schedule s
+        WHERE s.companyId = :companyId
+          AND s.employee.id = :employeeId
+          AND s.estado = :estado
+    """)
+    boolean existsByCompanyIdAndEmployeeIdAndEstado(
+            @Param("companyId") UUID companyId,
+            @Param("employeeId") UUID employeeId,
+            @Param("estado") EstadoTurno estado);
+
     /**
      * Turnos CUMPLIDO de toda la empresa para el reporte de horas trabajadas
      * (AUD-30 / issue #151) — companyId siempre requerido, branchId/desde/hasta

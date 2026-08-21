@@ -5,6 +5,8 @@ import com.staffly.backend.branch.Branch;
 import com.staffly.backend.branch.EstadoSucursal;
 import com.staffly.backend.company.Company;
 import com.staffly.backend.company.EstadoEmpresa;
+import com.staffly.backend.payroll.EstadoPeriodo;
+import com.staffly.backend.payroll.PayrollPeriod;
 import com.staffly.backend.user.EstadoUsuario;
 import com.staffly.backend.user.RolUsuario;
 import com.staffly.backend.user.User;
@@ -132,6 +134,17 @@ class EmployeeControllerTest {
         entityManager.persist(branch);
         entityManager.flush();
         return branch;
+    }
+
+    private PayrollPeriod createOpenPayrollPeriod(UUID companyId) {
+        PayrollPeriod period = new PayrollPeriod();
+        period.setCompanyId(companyId);
+        period.setFechaInicio(LocalDate.of(2026, 8, 1));
+        period.setFechaFin(LocalDate.of(2026, 8, 31));
+        period.setEstado(EstadoPeriodo.ABIERTO);
+        entityManager.persist(period);
+        entityManager.flush();
+        return period;
     }
 
     private Map<String, Object> baseEmployeeFields(UUID branchId) {
@@ -304,14 +317,36 @@ class EmployeeControllerTest {
                 .andReturn().getResponse().getContentAsString();
         String employeeId = objectMapper.readTree(createResponse).get("id").asText();
 
-        // estadoLiquidacion sigue AL_DIA (no editable por API), pero RF-07b dice
-        // que la baja no se bloquea aunque estuviera PENDIENTE de todos modos.
+        // Sin periodo abierto ni saldos liquidables, la baja no se bloquea y no
+        // fuerza una liquidacion pendiente artificial.
         mockMvc.perform(patch("/api/v1/employees/" + employeeId + "/status")
                         .header("Authorization", "Bearer " + companyAToken)
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(Map.of("estadoLaboral", "BAJA"))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.estadoLaboral").value("BAJA"));
+                .andExpect(jsonPath("$.estadoLaboral").value("BAJA"))
+                .andExpect(jsonPath("$.estadoLiquidacion").value("AL_DIA"));
+    }
+
+    @Test
+    void updateStatusToBajaMarksLiquidacionPendienteWhenOpenPeriodExists() throws Exception {
+        UUID branchId = createBranch(companyAId, "Sucursal Centro");
+        String createResponse = mockMvc.perform(post("/api/v1/employees")
+                        .header("Authorization", "Bearer " + companyAToken)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(baseEmployeeFields(branchId))))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String employeeId = objectMapper.readTree(createResponse).get("id").asText();
+        createOpenPayrollPeriod(companyAId);
+
+        mockMvc.perform(patch("/api/v1/employees/" + employeeId + "/status")
+                        .header("Authorization", "Bearer " + companyAToken)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(Map.of("estadoLaboral", "BAJA"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estadoLaboral").value("BAJA"))
+                .andExpect(jsonPath("$.estadoLiquidacion").value("PENDIENTE"));
     }
 
     @Test
