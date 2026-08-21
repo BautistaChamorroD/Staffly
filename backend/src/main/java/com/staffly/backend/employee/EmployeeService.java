@@ -1,5 +1,7 @@
 package com.staffly.backend.employee;
 
+import com.staffly.backend.advance.AdvanceRepository;
+import com.staffly.backend.advance.EstadoAdelanto;
 import com.staffly.backend.branch.Branch;
 import com.staffly.backend.branch.BranchRepository;
 import com.staffly.backend.common.BadRequestException;
@@ -7,6 +9,10 @@ import com.staffly.backend.common.ConflictException;
 import com.staffly.backend.common.ResourceNotFoundException;
 import com.staffly.backend.common.audit.AuditLogRepository;
 import com.staffly.backend.common.audit.AuditableFieldChangedEvent;
+import com.staffly.backend.payroll.EstadoPeriodo;
+import com.staffly.backend.payroll.PayrollPeriodRepository;
+import com.staffly.backend.schedule.EstadoTurno;
+import com.staffly.backend.schedule.ScheduleRepository;
 import com.staffly.backend.employee.dto.CreateEmployeeRequest;
 import com.staffly.backend.employee.dto.EmployeeHistoryEntry;
 import com.staffly.backend.employee.dto.EmployeeResponse;
@@ -44,6 +50,9 @@ public class EmployeeService {
     private final AuditLogRepository auditLogRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final EmployeeResolver employeeResolver;
+    private final PayrollPeriodRepository payrollPeriodRepository;
+    private final AdvanceRepository advanceRepository;
+    private final ScheduleRepository scheduleRepository;
 
     public EmployeeService(
             EmployeeRepository employeeRepository,
@@ -51,13 +60,19 @@ public class EmployeeService {
             UserRepository userRepository,
             AuditLogRepository auditLogRepository,
             ApplicationEventPublisher eventPublisher,
-            EmployeeResolver employeeResolver) {
+            EmployeeResolver employeeResolver,
+            PayrollPeriodRepository payrollPeriodRepository,
+            AdvanceRepository advanceRepository,
+            ScheduleRepository scheduleRepository) {
         this.employeeRepository = employeeRepository;
         this.branchRepository = branchRepository;
         this.userRepository = userRepository;
         this.auditLogRepository = auditLogRepository;
         this.eventPublisher = eventPublisher;
         this.employeeResolver = employeeResolver;
+        this.payrollPeriodRepository = payrollPeriodRepository;
+        this.advanceRepository = advanceRepository;
+        this.scheduleRepository = scheduleRepository;
     }
 
     @Transactional(readOnly = true)
@@ -233,6 +248,14 @@ public class EmployeeService {
                     employee.getEstadoLaboral().name(), request.estadoLaboral().name());
             employee.setEstadoLaboral(request.estadoLaboral());
         }
+        if (request.estadoLaboral() == EstadoLaboral.BAJA
+                && employee.getEstadoLiquidacion() == EstadoLiquidacion.AL_DIA
+                && requiereLiquidacionFinal(employee, principal.getCompanyId())) {
+            publishFieldChange(
+                    employee, principal, "estadoLiquidacion",
+                    EstadoLiquidacion.AL_DIA.name(), EstadoLiquidacion.PENDIENTE.name());
+            employee.setEstadoLiquidacion(EstadoLiquidacion.PENDIENTE);
+        }
         return EmployeeResponse.from(employeeRepository.save(employee));
     }
 
@@ -263,6 +286,19 @@ public class EmployeeService {
         if (fechaEgreso != null && fechaEgreso.isBefore(fechaIngreso)) {
             throw new BadRequestException("La fecha de egreso no puede ser anterior a la fecha de ingreso");
         }
+    }
+
+    private boolean requiereLiquidacionFinal(Employee employee, UUID companyId) {
+        if (payrollPeriodRepository.existsByCompanyIdAndEstadoIn(
+                companyId, List.of(EstadoPeriodo.ABIERTO, EstadoPeriodo.REABIERTO))) {
+            return true;
+        }
+        if (advanceRepository.existsByCompanyIdAndEmployeeIdAndEstado(
+                companyId, employee.getId(), EstadoAdelanto.PENDIENTE)) {
+            return true;
+        }
+        return scheduleRepository.existsByCompanyIdAndEmployeeIdAndEstado(
+                companyId, employee.getId(), EstadoTurno.CUMPLIDO);
     }
 
     private Set<Branch> resolveBranches(List<UUID> branchIds, UUID companyId) {

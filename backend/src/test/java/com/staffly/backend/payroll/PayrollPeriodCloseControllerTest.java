@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -120,6 +121,27 @@ class PayrollPeriodCloseControllerTest {
 
         long count = payslipRepository.findByCompanyId(companyAId).size();
         assertThat(count).isEqualTo(3); // empA1 + empA2 + terminated
+    }
+
+    @Test
+    void closeIncludesEmployeeTerminatedThroughStatusEndpoint() throws Exception {
+        mockMvc.perform(patch("/api/v1/employees/" + empA1.getId() + "/status")
+                        .header("Authorization", "Bearer " + adminAToken)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(Map.of("estadoLaboral", "BAJA"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estadoLaboral").value("BAJA"))
+                .andExpect(jsonPath("$.estadoLiquidacion").value("PENDIENTE"));
+
+        mockMvc.perform(post(BASE_URL + "/" + periodA.getId() + "/close")
+                        .header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isOk());
+
+        entityManager.flush();
+        entityManager.clear();
+
+        long count = payslipRepository.findByCompanyId(companyAId).size();
+        assertThat(count).isEqualTo(2); // empA1 (BAJA + PENDIENTE) + empA2 activo
     }
 
     @Test
