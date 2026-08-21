@@ -12,6 +12,7 @@ import com.staffly.backend.employee.EstadoLaboral;
 import com.staffly.backend.employee.EstadoLiquidacion;
 import com.staffly.backend.employee.TipoContrato;
 import com.staffly.backend.payslip.EstadoRecibo;
+import com.staffly.backend.payslip.Payslip;
 import com.staffly.backend.payslip.PayslipRepository;
 import com.staffly.backend.user.EstadoUsuario;
 import com.staffly.backend.user.RolUsuario;
@@ -85,10 +86,38 @@ class PayrollPeriodCloseControllerTest {
         entityManager.flush();
         entityManager.clear();
 
-        long count = payslipRepository.findByCompanyId(companyAId).stream()
-                .filter(p -> p.getEstado() == EstadoRecibo.PAGADO)
-                .count();
-        assertThat(count).isEqualTo(2);
+        List<Payslip> payslips = payslipRepository.findByCompanyId(companyAId);
+        assertThat(payslips)
+                .hasSize(2)
+                .allSatisfy(p -> {
+                    assertThat(p.getEstado()).isEqualTo(EstadoRecibo.GENERADO);
+                    assertThat(p.getFechaPago()).isNull();
+                });
+    }
+
+    @Test
+    void generatedPayslipCanBeMarkedPaidAfterClose() throws Exception {
+        mockMvc.perform(post(BASE_URL + "/" + periodA.getId() + "/close")
+                        .header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isOk());
+
+        entityManager.flush();
+        entityManager.clear();
+
+        Payslip payslip = payslipRepository.findByCompanyId(companyAId).stream()
+                .filter(p -> p.getEmployeeId().equals(empA1.getId()))
+                .findFirst()
+                .orElseThrow();
+
+        mockMvc.perform(patch("/api/v1/payslips/" + payslip.getId() + "/mark-paid")
+                        .header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estado").value("PAGADO"))
+                .andExpect(jsonPath("$.fechaPago").isNotEmpty());
+
+        mockMvc.perform(patch("/api/v1/payslips/" + payslip.getId() + "/mark-paid")
+                        .header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
