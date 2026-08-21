@@ -2,7 +2,6 @@ package com.staffly.backend.payslip;
 
 import com.staffly.backend.advance.Advance;
 import com.staffly.backend.advance.AdvanceRepository;
-import com.staffly.backend.advance.EstadoAdelanto;
 import com.staffly.backend.common.BadRequestException;
 import com.staffly.backend.common.ResourceNotFoundException;
 import com.staffly.backend.common.UnprocessableEntityException;
@@ -149,8 +148,7 @@ public class PayslipService {
         List<LeaveRequest> leaves = leaveRequestRepository.findByCompanyIdAndEmployeeIdAndEstado(
                 companyId, employee.getId(), EstadoLicencia.APROBADA);
 
-        List<Advance> advances = advanceRepository.findApplicableByCompanyIdAndEmployeeIdAndEstado(
-                companyId, employee.getId(), EstadoAdelanto.PENDIENTE, period.getFechaFin());
+        List<Advance> advances = loadOriginalAdvances(original, companyId);
 
         PayslipCalculation calc = new PayslipBuilder()
                 .withEmployee(employee)
@@ -173,6 +171,19 @@ public class PayslipService {
         eventPublisher.publishEvent(new AuditableFieldChangedEvent(
                 principal.getCompanyId(), AUDIT_ENTITY_TYPE, payslip.getId(),
                 principal.getUserId(), campo, valorAnterior, valorNuevo));
+    }
+
+    private List<Advance> loadOriginalAdvances(Payslip original, UUID companyId) {
+        if (original.getAdelantosAplicados() == null || original.getAdelantosAplicados().isEmpty()) {
+            return List.of();
+        }
+
+        return original.getAdelantosAplicados().stream()
+                .map(advanceId -> advanceRepository.findByIdAndCompanyId(advanceId, companyId)
+                        .filter(a -> a.getEmployeeId().equals(original.getEmployeeId()))
+                        .orElseThrow(() -> new UnprocessableEntityException(
+                                "El recibo original referencia un adelanto inválido")))
+                .toList();
     }
 
     private Payslip findVisibleOrThrow(UUID id, StafflyUserPrincipal principal) {

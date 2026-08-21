@@ -1,6 +1,8 @@
 package com.staffly.backend.payslip;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.staffly.backend.advance.Advance;
+import com.staffly.backend.advance.EstadoAdelanto;
 import com.staffly.backend.branch.Branch;
 import com.staffly.backend.branch.EstadoSucursal;
 import com.staffly.backend.company.Company;
@@ -103,6 +105,43 @@ class PayslipVoidControllerTest {
                 .andExpect(jsonPath("$[0].campo").value("estado"))
                 .andExpect(jsonPath("$[0].valorAnterior").value("PAGADO"))
                 .andExpect(jsonPath("$[0].valorNuevo").value("ANULADO"));
+    }
+
+    @Test
+    void voidPreservesOriginalAppliedAdvancesInAdjustment() throws Exception {
+        Advance originalAdvance = createAdvance(empA1, LocalDate.of(2026, 6, 10),
+                BigDecimal.valueOf(5000), EstadoAdelanto.DESCONTADO);
+        originalAdvance.setPayrollPeriod(periodA);
+
+        Advance pendingAdvance = createAdvance(empA1, LocalDate.of(2026, 6, 20),
+                BigDecimal.valueOf(3000), EstadoAdelanto.PENDIENTE);
+
+        Payslip original = createPayslipWithAdvance(companyAId, empA1, periodA, EstadoRecibo.PAGADO,
+                originalAdvance.getId(), originalAdvance.getMonto());
+        entityManager.flush();
+
+        String resp = mockMvc.perform(post(BASE_URL + "/" + original.getId() + "/void")
+                        .header("Authorization", "Bearer " + adminAToken)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(Map.of("motivoAnulacion", "Ajuste con adelanto"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tipo").value("AJUSTE"))
+                .andExpect(jsonPath("$.estado").value("GENERADO"))
+                .andExpect(jsonPath("$.totalAdelantos").value(5000.00))
+                .andReturn().getResponse().getContentAsString();
+
+        UUID adjustmentId = UUID.fromString(objectMapper.readTree(resp).get("id").asText());
+
+        entityManager.flush();
+        entityManager.clear();
+
+        Payslip adjustment = entityManager.find(Payslip.class, adjustmentId);
+        assertThat(adjustment.getAdelantosAplicados()).containsExactly(originalAdvance.getId());
+
+        Advance refreshedOriginalAdvance = entityManager.find(Advance.class, originalAdvance.getId());
+        Advance refreshedPendingAdvance = entityManager.find(Advance.class, pendingAdvance.getId());
+        assertThat(refreshedOriginalAdvance.getEstado()).isEqualTo(EstadoAdelanto.DESCONTADO);
+        assertThat(refreshedPendingAdvance.getEstado()).isEqualTo(EstadoAdelanto.PENDIENTE);
     }
 
     @Test
@@ -233,6 +272,36 @@ class PayslipVoidControllerTest {
         if (estado == EstadoRecibo.PAGADO) p.setFechaPago(LocalDate.of(2026, 6, 30));
         entityManager.persist(p); entityManager.flush();
         return p;
+    }
+
+    private Payslip createPayslipWithAdvance(UUID companyId, Employee emp, PayrollPeriod period,
+                                             EstadoRecibo estado, UUID advanceId, BigDecimal advanceAmount) {
+        PayslipCalculation calc = new PayslipCalculation(
+                emp.getId(), period.getId(),
+                emp.getSueldoBase(), BigDecimal.valueOf(500),
+                BigDecimal.valueOf(160), BigDecimal.ZERO, BigDecimal.ZERO,
+                BigDecimal.valueOf(80_000), BigDecimal.ZERO, BigDecimal.ZERO,
+                BigDecimal.valueOf(80_000), BigDecimal.ZERO, BigDecimal.valueOf(80_000),
+                List.of(), BigDecimal.ZERO, List.of(advanceId), advanceAmount,
+                BigDecimal.valueOf(80_000).subtract(advanceAmount)
+        );
+        Payslip p = PayslipFactory.normal(companyId, emp, period, calc);
+        p.setEstado(estado);
+        if (estado == EstadoRecibo.PAGADO) p.setFechaPago(LocalDate.of(2026, 6, 30));
+        entityManager.persist(p); entityManager.flush();
+        return p;
+    }
+
+    private Advance createAdvance(Employee employee, LocalDate fecha, BigDecimal monto, EstadoAdelanto estado) {
+        Advance a = new Advance();
+        a.setCompanyId(employee.getCompanyId());
+        a.setEmployee(employee);
+        a.setFecha(fecha);
+        a.setMonto(monto);
+        a.setMotivo("Adelanto test");
+        a.setEstado(estado);
+        entityManager.persist(a); entityManager.flush();
+        return a;
     }
 
     private String createUserAndLogin(UUID companyId, String email, RolUsuario rol,
