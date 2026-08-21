@@ -101,7 +101,12 @@ public class PayrollPeriodService {
             for (UUID advanceId : p.getAdelantosAplicados()) {
                 advanceRepository.findByIdAndCompanyId(advanceId, companyId)
                         .filter(a -> a.getEstado() == EstadoAdelanto.DESCONTADO)
-                        .ifPresent(a -> a.setEstado(EstadoAdelanto.PENDIENTE));
+                        .filter(a -> a.getPayrollPeriod() == null
+                                || a.getPayrollPeriod().getId().equals(period.getId()))
+                        .ifPresent(a -> {
+                            a.setEstado(EstadoAdelanto.PENDIENTE);
+                            a.setPayrollPeriod(null);
+                        });
             }
         });
 

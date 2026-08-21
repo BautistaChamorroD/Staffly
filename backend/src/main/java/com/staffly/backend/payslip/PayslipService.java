@@ -149,8 +149,8 @@ public class PayslipService {
         List<LeaveRequest> leaves = leaveRequestRepository.findByCompanyIdAndEmployeeIdAndEstado(
                 companyId, employee.getId(), EstadoLicencia.APROBADA);
 
-        List<Advance> advances = advanceRepository.findByCompanyIdAndEmployeeIdAndEstado(
-                companyId, employee.getId(), EstadoAdelanto.PENDIENTE);
+        List<Advance> advances = advanceRepository.findApplicableByCompanyIdAndEmployeeIdAndEstado(
+                companyId, employee.getId(), EstadoAdelanto.PENDIENTE, period.getFechaFin());
 
         PayslipCalculation calc = new PayslipBuilder()
                 .withEmployee(employee)

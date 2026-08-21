@@ -15,7 +15,8 @@ public record AdvanceResponse(
         LocalDate fecha,
         BigDecimal monto,
         String motivo,
-        EstadoAdelanto estado
+        EstadoAdelanto estado,
+        UUID payrollPeriodId
 ) {
     public static AdvanceResponse from(Advance a) {
         return new AdvanceResponse(
@@ -26,7 +27,8 @@ public record AdvanceResponse(
                 a.getFecha(),
                 a.getMonto(),
                 a.getMotivo(),
-                a.getEstado()
+                a.getEstado(),
+                a.getPayrollPeriodId()
         );
     }
 }

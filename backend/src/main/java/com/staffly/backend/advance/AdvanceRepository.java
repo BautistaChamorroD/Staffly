@@ -4,6 +4,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -21,6 +22,21 @@ public interface AdvanceRepository extends JpaRepository<Advance, UUID> {
 
     @Query("SELECT a FROM Advance a JOIN FETCH a.employee WHERE a.companyId = :companyId AND a.employee.id = :employeeId AND a.estado = :estado ORDER BY a.fecha DESC")
     List<Advance> findByCompanyIdAndEmployeeIdAndEstado(@Param("companyId") UUID companyId, @Param("employeeId") UUID employeeId, @Param("estado") EstadoAdelanto estado);
+
+    @Query("""
+        SELECT a FROM Advance a
+        JOIN FETCH a.employee
+        WHERE a.companyId = :companyId
+          AND a.employee.id = :employeeId
+          AND a.estado = :estado
+          AND a.fecha <= :fechaFin
+        ORDER BY a.fecha ASC, a.id ASC
+    """)
+    List<Advance> findApplicableByCompanyIdAndEmployeeIdAndEstado(
+            @Param("companyId") UUID companyId,
+            @Param("employeeId") UUID employeeId,
+            @Param("estado") EstadoAdelanto estado,
+            @Param("fechaFin") LocalDate fechaFin);
 
     @Query("""
         SELECT CASE WHEN COUNT(a) > 0 THEN true ELSE false END
