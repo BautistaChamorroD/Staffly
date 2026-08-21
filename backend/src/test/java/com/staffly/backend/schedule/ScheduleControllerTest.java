@@ -607,6 +607,61 @@ class ScheduleControllerTest {
     }
 
     @Test
+    void supervisorNoCreaTurnoEnSucursalDestinoFueraDeAlcance() throws Exception {
+        // emp1 esta dentro del scope por branch1, pero el destino branch2 no pertenece al supervisor.
+        String body = objectMapper.writeValueAsString(Map.of(
+                "employeeId", emp1.getId().toString(),
+                "branchId", branch2.getId().toString(),
+                "fechaHoraInicio", "2026-07-06T09:00:00",
+                "fechaHoraFin", "2026-07-06T17:00:00",
+                "tipoTurno", "FIJO"));
+
+        mockMvc.perform(post(BASE_URL)
+                        .header("Authorization", "Bearer " + supervisorToken)
+                        .contentType("application/json").content(body))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void supervisorNoMueveTurnoASucursalDestinoFueraDeAlcance() throws Exception {
+        UUID id = postSchedule(adminToken, emp1.getId(), branch1.getId(),
+                "2026-07-06T09:00:00", "2026-07-06T17:00:00", "FIJO");
+
+        mockMvc.perform(patch(BASE_URL + "/" + id)
+                        .header("Authorization", "Bearer " + supervisorToken)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "branchId", branch2.getId().toString()))))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(get(BASE_URL + "/" + id).header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.branchId").value(branch1.getId().toString()));
+    }
+
+    @Test
+    void adminYRrhhPuedenOperarSucursalesDelTenantSinScopeDeSupervisor() throws Exception {
+        UUID adminScheduleId = postSchedule(adminToken, emp1.getId(), branch2.getId(),
+                "2026-07-06T09:00:00", "2026-07-06T17:00:00", "FIJO");
+
+        mockMvc.perform(patch(BASE_URL + "/" + adminScheduleId)
+                        .header("Authorization", "Bearer " + rrhhToken)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "branchId", branch1.getId().toString()))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.branchId").value(branch1.getId().toString()));
+
+        UUID rrhhScheduleId = postSchedule(rrhhToken, emp1.getId(), branch2.getId(),
+                "2026-07-07T09:00:00", "2026-07-07T17:00:00", "FIJO");
+
+        mockMvc.perform(get(BASE_URL + "/" + rrhhScheduleId)
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.branchId").value(branch2.getId().toString()));
+    }
+
+    @Test
     void deleteEnPlanificado() throws Exception {
         UUID id = postSchedule(adminToken, emp1.getId(), branch1.getId(),
                 "2026-07-06T09:00:00", "2026-07-06T17:00:00", "FIJO");
