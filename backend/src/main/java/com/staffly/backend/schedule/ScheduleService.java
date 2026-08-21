@@ -98,8 +98,7 @@ public class ScheduleService {
             throw new BadRequestException("fechaHoraFin debe ser posterior a fechaHoraInicio");
         }
         Employee employee = employeeResolver.resolveForCaller(request.employeeId(), principal, false);
-        Branch branch = branchRepository.findByIdAndCompanyId(request.branchId(), principal.getCompanyId())
-                .orElseThrow(() -> new ResourceNotFoundException("No se encontró la sucursal solicitada"));
+        Branch branch = resolveBranchForCaller(request.branchId(), principal);
 
         if (scheduleRepository.existsOverlap(principal.getCompanyId(), employee.getId(),
                 request.fechaHoraInicio(), request.fechaHoraFin(), null)) {
@@ -156,8 +155,7 @@ public class ScheduleService {
         }
 
         if (request.branchId() != null) {
-            Branch branch = branchRepository.findByIdAndCompanyId(request.branchId(), principal.getCompanyId())
-                    .orElseThrow(() -> new ResourceNotFoundException("No se encontró la sucursal solicitada"));
+            Branch branch = resolveBranchForCaller(request.branchId(), principal);
             schedule.setBranch(branch);
         }
 
@@ -411,5 +409,16 @@ public class ScheduleService {
                 .map(User::getEmployee)
                 .map(Employee::getId)
                 .orElse(null);
+    }
+
+    private Branch resolveBranchForCaller(UUID branchId, StafflyUserPrincipal principal) {
+        Branch branch = branchRepository.findByIdAndCompanyId(branchId, principal.getCompanyId())
+                .orElseThrow(() -> new ResourceNotFoundException("No se encontró la sucursal solicitada"));
+
+        if (principal.getRol() == Rol.SUPERVISOR
+                && !principal.getBranchIds().contains(branch.getId())) {
+            throw new ResourceNotFoundException("No se encontró la sucursal solicitada");
+        }
+        return branch;
     }
 }
