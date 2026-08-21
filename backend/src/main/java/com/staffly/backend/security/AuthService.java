@@ -19,7 +19,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -31,6 +30,7 @@ public class AuthService {
     private final PlatformAdminRepository platformAdminRepository;
     private final CompanyRepository companyRepository;
     private final RevokedTokenRepository revokedTokenRepository;
+    private final RevokedTokenService revokedTokenService;
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
     private final long accessTokenMinutes;
@@ -40,6 +40,7 @@ public class AuthService {
             PlatformAdminRepository platformAdminRepository,
             CompanyRepository companyRepository,
             RevokedTokenRepository revokedTokenRepository,
+            RevokedTokenService revokedTokenService,
             JwtService jwtService,
             PasswordEncoder passwordEncoder,
             @Value("${staffly.security.jwt.access-token-minutes}") long accessTokenMinutes) {
@@ -47,6 +48,7 @@ public class AuthService {
         this.platformAdminRepository = platformAdminRepository;
         this.companyRepository = companyRepository;
         this.revokedTokenRepository = revokedTokenRepository;
+        this.revokedTokenService = revokedTokenService;
         this.jwtService = jwtService;
         this.passwordEncoder = passwordEncoder;
         this.accessTokenMinutes = accessTokenMinutes;
@@ -200,15 +202,12 @@ public class AuthService {
         return claims;
     }
 
+    /**
+     * Delega a {@link RevokedTokenService}, que corre en una transacción
+     * REQUIRES_NEW — la revocación queda persistida aunque el resto de la
+     * transacción del caller haga rollback (ver Javadoc de esa clase).
+     */
     private void revokeToken(Claims claims) {
-        // Purga oportunista: un jti expirado ya no puede usarse (el parseo
-        // del JWT rechaza tokens vencidos antes de llegar acá), así que
-        // conservarlo en la tabla no aporta nada — se limpia en cada
-        // revocación para que la tabla no crezca indefinidamente.
-        revokedTokenRepository.deleteByExpiraEnBefore(Instant.now());
-
-        UUID jti = jwtService.getJti(claims);
-        Instant expiraEn = claims.getExpiration().toInstant();
-        revokedTokenRepository.save(new RevokedToken(jti, expiraEn));
+        revokedTokenService.revoke(jwtService.getJti(claims), claims.getExpiration().toInstant());
     }
 }
