@@ -42,7 +42,7 @@ public abstract class PayrollCloseTemplate {
         for (Employee emp : employees) {
             List<Schedule>     schedules = loadSchedules(emp.getId(), period, companyId);
             List<LeaveRequest> leaves    = loadApprovedLeaves(emp.getId(), companyId);
-            List<Advance>      advances  = collectAndMarkAdvances(emp.getId(), companyId);
+            List<Advance>      advances  = collectAndMarkAdvances(emp.getId(), period, companyId);
 
             PayslipCalculation calc = new PayslipBuilder()
                     .withEmployee(emp)
@@ -67,7 +67,7 @@ public abstract class PayrollCloseTemplate {
     protected abstract List<Employee>  collectEmployees(UUID companyId);
     protected abstract List<Schedule>  loadSchedules(UUID employeeId, PayrollPeriod period, UUID companyId);
     protected abstract List<LeaveRequest> loadApprovedLeaves(UUID employeeId, UUID companyId);
-    protected abstract List<Advance>   collectAndMarkAdvances(UUID employeeId, UUID companyId);
+    protected abstract List<Advance>   collectAndMarkAdvances(UUID employeeId, PayrollPeriod period, UUID companyId);
     protected abstract void            persistPayslip(UUID companyId, Employee emp, PayrollPeriod period, PayslipCalculation calc);
     protected abstract void            markEmployeeUpToDate(Employee emp);
     protected abstract PayrollPeriodResponse finalizePeriod(PayrollPeriod period);

@@ -29,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -104,6 +105,35 @@ class PayrollPeriodCloseControllerTest {
 
         Advance refreshed = entityManager.find(Advance.class, adv.getId());
         assertThat(refreshed.getEstado()).isEqualTo(EstadoAdelanto.DESCONTADO);
+        assertThat(refreshed.getPayrollPeriodId()).isEqualTo(periodA.getId());
+    }
+
+    @Test
+    void closeDoesNotDiscountFutureAdvances() throws Exception {
+        Advance inPeriod = createAdvance(companyAId, empA1, LocalDate.of(2026, 7, 10), BigDecimal.valueOf(5000));
+        Advance future = createAdvance(companyAId, empA1, LocalDate.of(2026, 8, 1), BigDecimal.valueOf(3000));
+        entityManager.flush();
+
+        mockMvc.perform(post(BASE_URL + "/" + periodA.getId() + "/close")
+                        .header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isOk());
+
+        entityManager.flush();
+        entityManager.clear();
+
+        Advance refreshedInPeriod = entityManager.find(Advance.class, inPeriod.getId());
+        Advance refreshedFuture = entityManager.find(Advance.class, future.getId());
+
+        assertThat(refreshedInPeriod.getEstado()).isEqualTo(EstadoAdelanto.DESCONTADO);
+        assertThat(refreshedInPeriod.getPayrollPeriodId()).isEqualTo(periodA.getId());
+        assertThat(refreshedFuture.getEstado()).isEqualTo(EstadoAdelanto.PENDIENTE);
+        assertThat(refreshedFuture.getPayrollPeriodId()).isNull();
+
+        List<UUID> applied = payslipRepository
+                .findNormalByCompanyIdAndEmployeeIdAndPayrollPeriodId(companyAId, empA1.getId(), periodA.getId())
+                .orElseThrow()
+                .getAdelantosAplicados();
+        assertThat(applied).containsExactly(inPeriod.getId());
     }
 
     @Test
@@ -257,9 +287,13 @@ class PayrollPeriodCloseControllerTest {
     }
 
     private Advance createAdvance(UUID companyId, Employee emp, BigDecimal monto) {
+        return createAdvance(companyId, emp, LocalDate.of(2026, 7, 10), monto);
+    }
+
+    private Advance createAdvance(UUID companyId, Employee emp, LocalDate fecha, BigDecimal monto) {
         Advance a = new Advance();
         a.setCompanyId(companyId); a.setEmployee(emp);
-        a.setFecha(LocalDate.of(2026, 7, 10));
+        a.setFecha(fecha);
         a.setMonto(monto); a.setMotivo("Adelanto");
         a.setEstado(EstadoAdelanto.PENDIENTE);
         entityManager.persist(a); entityManager.flush();

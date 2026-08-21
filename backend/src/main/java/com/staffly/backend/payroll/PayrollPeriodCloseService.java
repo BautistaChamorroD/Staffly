@@ -103,10 +103,13 @@ public class PayrollPeriodCloseService extends PayrollCloseTemplate {
     }
 
     @Override
-    protected List<Advance> collectAndMarkAdvances(UUID employeeId, UUID companyId) {
-        List<Advance> advances = advanceRepository.findByCompanyIdAndEmployeeIdAndEstado(
-                companyId, employeeId, EstadoAdelanto.PENDIENTE);
-        advances.forEach(a -> a.setEstado(EstadoAdelanto.DESCONTADO));
+    protected List<Advance> collectAndMarkAdvances(UUID employeeId, PayrollPeriod period, UUID companyId) {
+        List<Advance> advances = advanceRepository.findApplicableByCompanyIdAndEmployeeIdAndEstado(
+                companyId, employeeId, EstadoAdelanto.PENDIENTE, period.getFechaFin());
+        advances.forEach(a -> {
+            a.setEstado(EstadoAdelanto.DESCONTADO);
+            a.setPayrollPeriod(period);
+        });
         return advances;
     }
 

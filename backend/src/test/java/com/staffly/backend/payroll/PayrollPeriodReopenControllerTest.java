@@ -109,6 +109,7 @@ class PayrollPeriodReopenControllerTest {
         advance.setMonto(BigDecimal.valueOf(5000));
         advance.setMotivo("Adelanto");
         advance.setEstado(EstadoAdelanto.DESCONTADO);
+        advance.setPayrollPeriod(periodA);
         entityManager.persist(advance);
 
         createPayslipConAdelanto(companyAId, empA1, periodA, advance.getId());
@@ -123,6 +124,37 @@ class PayrollPeriodReopenControllerTest {
 
         Advance refreshed = entityManager.find(Advance.class, advance.getId());
         assertThat(refreshed.getEstado()).isEqualTo(EstadoAdelanto.PENDIENTE);
+        assertThat(refreshed.getPayrollPeriodId()).isNull();
+    }
+
+    @Test
+    void reopenDoesNotRevertAdvanceAppliedToAnotherPeriod() throws Exception {
+        PayrollPeriod periodB = createPeriod(companyAId, LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 31),
+                EstadoPeriodo.ABIERTO);
+
+        Advance advance = new Advance();
+        advance.setCompanyId(companyAId);
+        advance.setEmployee(empA1);
+        advance.setFecha(LocalDate.of(2026, 7, 10));
+        advance.setMonto(BigDecimal.valueOf(5000));
+        advance.setMotivo("Adelanto julio");
+        advance.setEstado(EstadoAdelanto.DESCONTADO);
+        advance.setPayrollPeriod(periodB);
+        entityManager.persist(advance);
+
+        createPayslipConAdelanto(companyAId, empA1, periodA, advance.getId());
+        entityManager.flush();
+
+        mockMvc.perform(post(BASE_URL + "/" + periodA.getId() + "/reopen")
+                        .header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isOk());
+
+        entityManager.flush();
+        entityManager.clear();
+
+        Advance refreshed = entityManager.find(Advance.class, advance.getId());
+        assertThat(refreshed.getEstado()).isEqualTo(EstadoAdelanto.DESCONTADO);
+        assertThat(refreshed.getPayrollPeriodId()).isEqualTo(periodB.getId());
     }
 
     @Test

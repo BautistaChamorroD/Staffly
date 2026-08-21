@@ -1,6 +1,7 @@
 package com.staffly.backend.advance;
 
 import com.staffly.backend.employee.Employee;
+import com.staffly.backend.payroll.PayrollPeriod;
 import com.staffly.backend.tenant.TenantAwareEntity;
 import jakarta.persistence.*;
 import org.hibernate.annotations.Filter;
@@ -36,6 +37,10 @@ public class Advance extends TenantAwareEntity {
     @Column(name = "estado", nullable = false)
     private EstadoAdelanto estado = EstadoAdelanto.PENDIENTE;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "payroll_period_id")
+    private PayrollPeriod payrollPeriod;
+
     public UUID getId() { return id; }
 
     public Employee getEmployee() { return employee; }
@@ -54,4 +59,9 @@ public class Advance extends TenantAwareEntity {
 
     public EstadoAdelanto getEstado() { return estado; }
     public void setEstado(EstadoAdelanto estado) { this.estado = estado; }
+
+    public PayrollPeriod getPayrollPeriod() { return payrollPeriod; }
+    public void setPayrollPeriod(PayrollPeriod payrollPeriod) { this.payrollPeriod = payrollPeriod; }
+
+    public UUID getPayrollPeriodId() { return payrollPeriod != null ? payrollPeriod.getId() : null; }
 }
