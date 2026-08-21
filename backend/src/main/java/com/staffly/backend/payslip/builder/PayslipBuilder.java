@@ -2,6 +2,7 @@ package com.staffly.backend.payslip.builder;
 
 import com.staffly.backend.advance.Advance;
 import com.staffly.backend.employee.Employee;
+import com.staffly.backend.employee.TipoContrato;
 import com.staffly.backend.leave.LeaveRequest;
 import com.staffly.backend.payroll.PayrollConfig;
 import com.staffly.backend.payroll.PayrollPeriod;
@@ -31,6 +32,12 @@ import java.util.UUID;
 
 /**
  * Builder para calcular el detalle de un recibo de sueldo.
+ *
+ * <p>Regla v1 por contrato:
+ * <ul>
+ *   <li>JORNADA_COMPLETA: sueldoBase es salario fijo del periodo liquidado.</li>
+ *   <li>JORNADA_PARCIAL y POR_HORA: sueldoBase se usa como base nominal para calcular valor hora.</li>
+ * </ul>
  *
  * <p>Orden de pasos (crítico — no invertir):
  * <ol>
@@ -140,7 +147,11 @@ public final class PayslipBuilder {
                 .multiply(config.getMultiplicadorFeriado())
                 .setScale(2, RoundingMode.HALF_UP);
 
-        BigDecimal brutoHoras = montoHorasNormales.add(montoHorasExtra).add(montoHorasFeriado);
+        boolean salarioFijo = employee.getTipoContrato() == TipoContrato.JORNADA_COMPLETA;
+        BigDecimal montoBaseFija = salarioFijo ? sueldoBase.setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO;
+        BigDecimal brutoHoras = salarioFijo
+                ? montoBaseFija.add(montoHorasExtra).add(montoHorasFeriado)
+                : montoHorasNormales.add(montoHorasExtra).add(montoHorasFeriado);
 
         // ── Paso 2: licencias aprobadas ───────────────────────────────────────
         BigDecimal ajusteLicencias = BigDecimal.ZERO;
@@ -152,9 +163,13 @@ public final class PayslipBuilder {
             if (dias <= 0) continue;
 
             BigDecimal impacto = valorDia.multiply(BigDecimal.valueOf(dias));
-            ajusteLicencias = lr.getLeaveType().isEsPaga()
-                    ? ajusteLicencias.add(impacto)
-                    : ajusteLicencias.subtract(impacto);
+            if (lr.getLeaveType().isEsPaga()) {
+                if (!salarioFijo) {
+                    ajusteLicencias = ajusteLicencias.add(impacto);
+                }
+            } else {
+                ajusteLicencias = ajusteLicencias.subtract(impacto);
+            }
         }
         ajusteLicencias = ajusteLicencias.setScale(2, RoundingMode.HALF_UP);
 
