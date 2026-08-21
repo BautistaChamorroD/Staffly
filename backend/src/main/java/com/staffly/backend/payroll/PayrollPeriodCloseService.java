@@ -15,7 +15,6 @@ import com.staffly.backend.leave.EstadoLicencia;
 import com.staffly.backend.leave.LeaveRequest;
 import com.staffly.backend.leave.LeaveRequestRepository;
 import com.staffly.backend.payroll.dto.PayrollPeriodResponse;
-import com.staffly.backend.payslip.EstadoRecibo;
 import com.staffly.backend.payslip.Payslip;
 import com.staffly.backend.payslip.PayslipFactory;
 import com.staffly.backend.payslip.PayslipRepository;
@@ -122,8 +121,6 @@ public class PayrollPeriodCloseService extends PayrollCloseTemplate {
                 .findNormalByCompanyIdAndEmployeeIdAndPayrollPeriodId(companyId, emp.getId(), period.getId())
                 .orElseGet(() -> PayslipFactory.normal(companyId, emp, period, calc));
         PayslipFactory.applySnapshot(payslip, calc);
-        payslip.setEstado(EstadoRecibo.PAGADO);
-        payslip.setFechaPago(LocalDate.now());
         payslipRepository.save(payslip);
     }
 
