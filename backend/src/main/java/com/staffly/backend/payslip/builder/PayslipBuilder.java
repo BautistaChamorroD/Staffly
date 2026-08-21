@@ -44,6 +44,7 @@ public final class PayslipBuilder {
 
     private static final BigDecimal HORAS_NOMINALES_MENSUAL    = BigDecimal.valueOf(200);
     private static final BigDecimal HORAS_NOMINALES_QUINCENAL  = BigDecimal.valueOf(100);
+    private static final BigDecimal HORAS_NOMINALES_SEMANAL    = BigDecimal.valueOf(40);
     private static final BigDecimal HORAS_POR_DIA              = BigDecimal.valueOf(8);
 
     private Employee      employee;
@@ -212,9 +213,11 @@ public final class PayslipBuilder {
     // ── helpers ───────────────────────────────────────────────────────────────
 
     private static BigDecimal horasNominales(Periodicidad periodicidad) {
-        return periodicidad == Periodicidad.QUINCENAL
-                ? HORAS_NOMINALES_QUINCENAL
-                : HORAS_NOMINALES_MENSUAL;
+        return switch (periodicidad) {
+            case MENSUAL -> HORAS_NOMINALES_MENSUAL;
+            case QUINCENAL -> HORAS_NOMINALES_QUINCENAL;
+            case SEMANAL -> HORAS_NOMINALES_SEMANAL;
+        };
     }
 
     private static BigDecimal horasDelTurno(Schedule s) {
