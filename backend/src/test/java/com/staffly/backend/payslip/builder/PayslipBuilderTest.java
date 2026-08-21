@@ -51,7 +51,7 @@ class PayslipBuilderTest {
         employee.setDocumento("12345678");
         employee.setFechaNacimiento(LocalDate.of(1990, 1, 1));
         employee.setFechaIngreso(LocalDate.of(2024, 1, 1));
-        employee.setTipoContrato(TipoContrato.JORNADA_COMPLETA);
+        employee.setTipoContrato(TipoContrato.POR_HORA);
         employee.setCategoria("General");
         employee.setEstadoLaboral(EstadoLaboral.ACTIVO);
         employee.setEstadoLiquidacion(EstadoLiquidacion.AL_DIA);
@@ -83,6 +83,42 @@ class PayslipBuilderTest {
     }
 
     @Test
+    void jornadaCompletaSinTurnos_cobraSueldoBaseDelPeriodo() {
+        employee.setTipoContrato(TipoContrato.JORNADA_COMPLETA);
+
+        PayslipCalculation result = builder().build();
+
+        assertEquals(bd("0.00"), result.horasNormales());
+        assertEquals(bd("200000.00"), result.brutoHoras());
+        assertEquals(bd("200000.00"), result.brutoCalculado());
+        assertEquals(bd("200000.00"), result.netoFinal());
+    }
+
+    @Test
+    void jornadaCompletaConLicenciaPaga_noDuplicaSueldoBase() {
+        employee.setTipoContrato(TipoContrato.JORNADA_COMPLETA);
+        LeaveRequest lr = leaveRequest(
+                LocalDate.of(2026, 8, 4), LocalDate.of(2026, 8, 8), true);
+
+        PayslipCalculation result = builder().withLeaveRequests(List.of(lr)).build();
+
+        assertEquals(bd("0.00"), result.ajusteLicencias());
+        assertEquals(bd("200000.00"), result.brutoCalculado());
+    }
+
+    @Test
+    void jornadaCompletaConLicenciaNoPaga_descuentaDiasDelSueldoBase() {
+        employee.setTipoContrato(TipoContrato.JORNADA_COMPLETA);
+        LeaveRequest lr = leaveRequest(
+                LocalDate.of(2026, 8, 5), LocalDate.of(2026, 8, 6), false);
+
+        PayslipCalculation result = builder().withLeaveRequests(List.of(lr)).build();
+
+        assertEquals(bd("-16000.00"), result.ajusteLicencias());
+        assertEquals(bd("184000.00"), result.brutoCalculado());
+    }
+
+    @Test
     void turnoNormal_menorAlUmbral() {
         // 7h < umbral 8h → todo normal
         List<Schedule> schedules = List.of(shift(2026, 8, 4, 9, 0, 16, 0));
@@ -92,6 +128,17 @@ class PayslipBuilderTest {
         assertEquals(bd("0.00"), result.horasExtra());
         assertEquals(bd("0.00"), result.horasFeriado());
         // bruto = 7h × (200000/200) = 7 × 1000 = 7000
+        assertEquals(bd("7000.00"), result.brutoCalculado());
+    }
+
+    @Test
+    void jornadaParcialMantieneCalculoPorHorasCumplidas() {
+        employee.setTipoContrato(TipoContrato.JORNADA_PARCIAL);
+
+        List<Schedule> schedules = List.of(shift(2026, 8, 4, 9, 0, 16, 0));
+        PayslipCalculation result = builder().withSchedules(schedules).build();
+
+        assertEquals(bd("7.00"), result.horasNormales());
         assertEquals(bd("7000.00"), result.brutoCalculado());
     }
 
