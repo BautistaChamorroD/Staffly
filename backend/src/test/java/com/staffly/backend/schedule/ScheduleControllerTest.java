@@ -768,6 +768,46 @@ class ScheduleControllerTest {
     }
 
     @Test
+    void filtrosCombinadosSeAplicanEnListado() throws Exception {
+        postSchedule(adminToken, emp1.getId(), branch1.getId(),
+                "2026-07-05T09:00:00", "2026-07-05T17:00:00", "FIJO");
+        postSchedule(adminToken, emp1.getId(), branch1.getId(),
+                "2026-07-06T09:00:00", "2026-07-06T17:00:00", "FIJO");
+        postSchedule(adminToken, emp2.getId(), branch2.getId(),
+                "2026-07-06T09:00:00", "2026-07-06T17:00:00", "FIJO");
+        postSchedule(adminToken, emp1.getId(), branch1.getId(),
+                "2026-07-10T09:00:00", "2026-07-10T17:00:00", "FIJO");
+
+        mockMvc.perform(get(BASE_URL)
+                        .param("employeeId", emp1.getId().toString())
+                        .param("branchId", branch1.getId().toString())
+                        .param("desde", "2026-07-06")
+                        .param("hasta", "2026-07-07")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].employeeId").value(emp1.getId().toString()))
+                .andExpect(jsonPath("$[0].branchId").value(branch1.getId().toString()))
+                .andExpect(jsonPath("$[0].fechaHoraInicio").value("2026-07-06T09:00:00"));
+    }
+
+    @Test
+    void supervisorSinSucursalesRetornaListaVacia() throws Exception {
+        String supervisorSinSucursalesToken = createUserAndLogin(
+                companyAId, "sup-empty@a.com", RolUsuario.SUPERVISOR, null, null);
+
+        postSchedule(adminToken, emp1.getId(), branch1.getId(),
+                "2026-07-06T09:00:00", "2026-07-06T17:00:00", "FIJO");
+        postSchedule(adminToken, emp2.getId(), branch2.getId(),
+                "2026-07-06T09:00:00", "2026-07-06T17:00:00", "FIJO");
+
+        mockMvc.perform(get(BASE_URL)
+                        .header("Authorization", "Bearer " + supervisorSinSucursalesToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
     void rrhhPuedeEscribir() throws Exception {
         // RRHH puede crear
         UUID id = postSchedule(rrhhToken, emp1.getId(), branch1.getId(),
