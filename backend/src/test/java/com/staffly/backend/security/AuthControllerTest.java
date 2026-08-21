@@ -54,6 +54,9 @@ class AuthControllerTest {
     private RevokedTokenRepository revokedTokenRepository;
 
     @Autowired
+    private RevokedTokenService revokedTokenService;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Autowired
@@ -265,8 +268,13 @@ class AuthControllerTest {
     @Test
     void refreshPurgesExpiredRevokedTokens() throws Exception {
         UUID expiredJti = UUID.randomUUID();
-        revokedTokenRepository.save(new RevokedToken(expiredJti, Instant.now().minusSeconds(60)));
-        entityManager.flush();
+        // La revocación (y su purga previa) corre en una transacción
+        // REQUIRES_NEW propia (issue #166) — se inserta acá pasando por el
+        // mismo componente, para que quede commiteada de verdad y visible
+        // desde la transacción REQUIRES_NEW que dispara el refresh de abajo
+        // (un save()+flush() directo en la transacción de test, que nunca
+        // commitea sola, no sería visible desde otra conexión).
+        revokedTokenService.revoke(expiredJti, Instant.now().minusSeconds(60));
 
         String refreshToken = loginAndGetRefreshToken();
         String refreshBody = objectMapper.writeValueAsString(Map.of("refreshToken", refreshToken));
@@ -321,6 +329,81 @@ class AuthControllerTest {
 
         StafflyUserPrincipal parsed = jwtService.toPrincipal(jwtService.parseToken(newAccessToken));
         assertThat(parsed.getBranchIds()).containsExactly(branchB.getId());
+    }
+
+    @Test
+    void refreshRebuildsPrincipalAfterRoleDowngrade() throws Exception {
+        // issue #166 (seguimiento de AUD-04): el caso más sensible del propio
+        // fix — retener privilegios de SUPERVISOR tras ser degradado a
+        // EMPLOYEE — no tenía cobertura. Verifica ambos tokens nuevos
+        // (access Y refresh), no solo el access como el test existente.
+        Branch branchA = createBranch("Sucursal A");
+
+        User supervisor = new User();
+        supervisor.setCompanyId(company.getId());
+        supervisor.setEmail("supervisor-downgrade@heladeria-test.com");
+        supervisor.setPasswordHash(passwordEncoder.encode(PASSWORD));
+        supervisor.setRol(RolUsuario.SUPERVISOR);
+        supervisor.setEstado(EstadoUsuario.ACTIVO);
+        supervisor.setDebeCambiarPassword(false);
+        supervisor.getBranches().add(branchA);
+        userRepository.save(supervisor);
+        entityManager.flush();
+
+        String loginBody = objectMapper.writeValueAsString(Map.of(
+                "email", "supervisor-downgrade@heladeria-test.com",
+                "password", PASSWORD));
+        String loginResponseJson = mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType("application/json")
+                        .content(loginBody))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        String refreshToken = objectMapper.readTree(loginResponseJson).get("refreshToken").asText();
+
+        // degradado a EMPLOYEE DESPUÉS de emitido el token — simula un
+        // PATCH /users/{id} de un Admin mientras la sesión sigue abierta
+        supervisor.setRol(RolUsuario.EMPLOYEE);
+        supervisor.getBranches().clear();
+        userRepository.save(supervisor);
+        entityManager.flush();
+
+        String refreshBody = objectMapper.writeValueAsString(Map.of("refreshToken", refreshToken));
+        String refreshResponseJson = mockMvc.perform(post("/api/v1/auth/refresh")
+                        .contentType("application/json")
+                        .content(refreshBody))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        String newAccessToken = objectMapper.readTree(refreshResponseJson).get("accessToken").asText();
+        String newRefreshToken = objectMapper.readTree(refreshResponseJson).get("refreshToken").asText();
+
+        StafflyUserPrincipal parsedAccess = jwtService.toPrincipal(jwtService.parseToken(newAccessToken));
+        assertThat(parsedAccess.getRol()).isEqualTo(Rol.EMPLOYEE);
+        assertThat(parsedAccess.getBranchIds()).isEmpty();
+
+        StafflyUserPrincipal parsedRefresh = jwtService.toPrincipal(jwtService.parseToken(newRefreshToken));
+        assertThat(parsedRefresh.getRol()).isEqualTo(Rol.EMPLOYEE);
+    }
+
+    @Test
+    void refreshRejectedForDeactivatedAccountStillRevokesOldToken() throws Exception {
+        // issue #166 (seguimiento de AUD-04): antes del fix, revokeToken()
+        // corría en la misma transacción que reloadPrincipal() — si la
+        // cuenta estaba desactivada, el rollback completo deshacía también
+        // la revocación, dejando el refresh token reutilizable sin límite.
+        String refreshToken = loginAndGetRefreshToken();
+        UUID jti = jwtService.getJti(jwtService.parseToken(refreshToken));
+
+        user.setEstado(EstadoUsuario.INACTIVO);
+        userRepository.save(user);
+        entityManager.flush();
+
+        String refreshBody = objectMapper.writeValueAsString(Map.of("refreshToken", refreshToken));
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .contentType("application/json")
+                        .content(refreshBody))
+                .andExpect(status().isUnauthorized());
+
+        assertThat(revokedTokenRepository.existsById(jti)).isTrue();
     }
 
     @Test
