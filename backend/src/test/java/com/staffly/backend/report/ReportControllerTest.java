@@ -200,6 +200,51 @@ class ReportControllerTest {
     }
 
     @Test
+    void empleadoMultiSucursal_calculaHorasExtraANivelEmpleado() throws Exception {
+        emp1.getBranches().add(branch2);
+        entityManager.merge(emp1);
+        entityManager.flush();
+
+        createSchedule(companyAId, emp1, branch1, EstadoTurno.CUMPLIDO,
+                LocalDateTime.of(2026, 7, 6, 8, 0), LocalDateTime.of(2026, 7, 6, 14, 0)); // 6h
+        createSchedule(companyAId, emp1, branch2, EstadoTurno.CUMPLIDO,
+                LocalDateTime.of(2026, 7, 6, 14, 0), LocalDateTime.of(2026, 7, 6, 20, 0)); // +6h = 12h
+
+        mockMvc.perform(get(BASE_URL + "/hours-worked?desde=2026-07-01&hasta=2026-07-31")
+                        .header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].branchId").value(branch1.getId().toString()))
+                .andExpect(jsonPath("$[0].horasNormales").value(6.0))
+                .andExpect(jsonPath("$[0].horasExtra").value(0.0))
+                .andExpect(jsonPath("$[1].branchId").value(branch2.getId().toString()))
+                .andExpect(jsonPath("$[1].horasNormales").value(2.0))
+                .andExpect(jsonPath("$[1].horasExtra").value(4.0));
+    }
+
+    @Test
+    void filtroBranchIdMantieneHorasExtraCalculadasANivelEmpleado() throws Exception {
+        emp1.getBranches().add(branch2);
+        entityManager.merge(emp1);
+        entityManager.flush();
+
+        createSchedule(companyAId, emp1, branch1, EstadoTurno.CUMPLIDO,
+                LocalDateTime.of(2026, 7, 6, 8, 0), LocalDateTime.of(2026, 7, 6, 14, 0)); // 6h
+        createSchedule(companyAId, emp1, branch2, EstadoTurno.CUMPLIDO,
+                LocalDateTime.of(2026, 7, 6, 14, 0), LocalDateTime.of(2026, 7, 6, 20, 0)); // +6h = 12h
+
+        mockMvc.perform(get(BASE_URL + "/hours-worked?branchId=" + branch2.getId()
+                        + "&desde=2026-07-01&hasta=2026-07-31")
+                        .header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].branchId").value(branch2.getId().toString()))
+                .andExpect(jsonPath("$[0].horasNormales").value(2.0))
+                .andExpect(jsonPath("$[0].horasExtra").value(4.0))
+                .andExpect(jsonPath("$[0].totalHoras").value(6.0));
+    }
+
+    @Test
     void sinConfigDeNominaRetorna400() throws Exception {
         UUID companyBId = createCompany("Empresa Sin Config");
         String adminBToken = createUserAndLogin(companyBId, "admin@b.com", RolUsuario.ADMIN, null, null);
