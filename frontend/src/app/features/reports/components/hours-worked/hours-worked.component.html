@@ -74,7 +74,7 @@
             </tr>
           </thead>
           <tbody class="divide-y divide-brand-line">
-            @for (row of rows; track row.employeeId) {
+            @for (row of rows; track row.employeeId + '-' + row.branchId) {
               <tr class="bg-brand-card">
                 <td class="px-4 py-3 text-brand-ink">{{ row.employeeNombre }} {{ row.employeeApellido }}</td>
                 <td class="px-4 py-3 text-brand-muted">{{ row.branchNombre }}</td>

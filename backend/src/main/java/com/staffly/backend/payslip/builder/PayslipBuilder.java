@@ -7,27 +7,20 @@ import com.staffly.backend.leave.LeaveRequest;
 import com.staffly.backend.payroll.PayrollConfig;
 import com.staffly.backend.payroll.PayrollPeriod;
 import com.staffly.backend.payroll.Periodicidad;
-import com.staffly.backend.payroll.TipoUmbral;
 import com.staffly.backend.payroll.decorator.DeduccionLinea;
 import com.staffly.backend.payroll.decorator.DiscountChainBuilder;
 import com.staffly.backend.payroll.decorator.SalaryComponent;
-import com.staffly.backend.payroll.strategy.HolidayStrategy;
 import com.staffly.backend.payroll.strategy.HoursBreakdown;
-import com.staffly.backend.payroll.strategy.HoursCalculationStrategySelector;
-import com.staffly.backend.payroll.strategy.OvertimeStrategy;
-import com.staffly.backend.schedule.EstadoTurno;
+import com.staffly.backend.payroll.strategy.ScheduleHoursBreakdownCalculator;
 import com.staffly.backend.schedule.Schedule;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
-import java.time.temporal.WeekFields;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -110,33 +103,11 @@ public final class PayslipBuilder {
         // El umbral de hora extra se agrupa por día o por semana (RF-16, config.tipoUmbral)
         // — nunca acumulado sobre todo el período, o casi todas las horas del segundo
         // día en adelante terminarían contando como extra (AUD-24 / issue #129).
-        BigDecimal totalNormal   = BigDecimal.ZERO;
-        BigDecimal totalExtra    = BigDecimal.ZERO;
-        BigDecimal totalFeriado  = BigDecimal.ZERO;
-
-        List<Schedule> cumplidos = schedules.stream()
-                .filter(s -> s.getEstado() == EstadoTurno.CUMPLIDO)
-                .toList();
-
-        Map<Object, BigDecimal> horasPorGrupo = new LinkedHashMap<>();
-        for (Schedule s : cumplidos) {
-            BigDecimal shiftHours = horasDelTurno(s);
-            LocalDate  shiftDate  = s.getFechaHoraInicio().toLocalDate();
-
-            if (HoursCalculationStrategySelector.select(shiftDate, holidays) instanceof HolidayStrategy) {
-                HoursBreakdown bd = new HolidayStrategy().calculate(shiftHours, BigDecimal.ZERO, config);
-                totalFeriado = totalFeriado.add(bd.holidayHours());
-            } else {
-                Object grupo = umbralGroupKey(shiftDate, config.getTipoUmbral());
-                horasPorGrupo.merge(grupo, shiftHours, BigDecimal::add);
-            }
-        }
-
-        for (BigDecimal horasGrupo : horasPorGrupo.values()) {
-            HoursBreakdown bd = new OvertimeStrategy().calculate(horasGrupo, BigDecimal.ZERO, config);
-            totalNormal = totalNormal.add(bd.normalHours());
-            totalExtra  = totalExtra.add(bd.overtimeHours());
-        }
+        HoursBreakdown hoursBreakdown = ScheduleHoursBreakdownCalculator
+                .summarize(schedules, holidays, config);
+        BigDecimal totalNormal = hoursBreakdown.normalHours();
+        BigDecimal totalExtra = hoursBreakdown.overtimeHours();
+        BigDecimal totalFeriado = hoursBreakdown.holidayHours();
 
         BigDecimal montoHorasNormales = totalNormal.multiply(valorHora)
                 .setScale(2, RoundingMode.HALF_UP);
@@ -233,20 +204,6 @@ public final class PayslipBuilder {
             case QUINCENAL -> HORAS_NOMINALES_QUINCENAL;
             case SEMANAL -> HORAS_NOMINALES_SEMANAL;
         };
-    }
-
-    private static BigDecimal horasDelTurno(Schedule s) {
-        long minutos = ChronoUnit.MINUTES.between(s.getFechaHoraInicio(), s.getFechaHoraFin());
-        return BigDecimal.valueOf(minutos).divide(BigDecimal.valueOf(60), 6, RoundingMode.HALF_UP);
-    }
-
-    /** Clave de agrupación para el umbral de hora extra: por día calendario o por semana ISO. */
-    private static Object umbralGroupKey(LocalDate shiftDate, TipoUmbral tipoUmbral) {
-        if (tipoUmbral == TipoUmbral.SEMANAL) {
-            WeekFields iso = WeekFields.ISO;
-            return shiftDate.get(iso.weekBasedYear()) + "-W" + shiftDate.get(iso.weekOfWeekBasedYear());
-        }
-        return shiftDate;
     }
 
     private static long diasSolapados(LocalDate ini, LocalDate fin,
