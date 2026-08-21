@@ -1,1 +1,1 @@
-import '@angular/localize/init';
+export {};
