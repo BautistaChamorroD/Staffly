@@ -106,6 +106,31 @@ class PayrollConfigControllerTest {
     }
 
     @Test
+    void updateAllowsWeeklyPeriodicity() throws Exception {
+        Map<String, Object> body = Map.of(
+                "umbralHorasExtra", 40,
+                "tipoUmbral", "SEMANAL",
+                "multiplicadorHoraExtra", 1.5,
+                "multiplicadorFeriado", 2.0,
+                "periodicidad", "SEMANAL",
+                "conceptosDescuento", List.of()
+        );
+
+        mockMvc.perform(put(BASE_URL)
+                        .header("Authorization", "Bearer " + adminAToken)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.umbralHorasExtra").value(40))
+                .andExpect(jsonPath("$.tipoUmbral").value("SEMANAL"))
+                .andExpect(jsonPath("$.periodicidad").value("SEMANAL"));
+
+        mockMvc.perform(get(BASE_URL).header("Authorization", "Bearer " + adminAToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.periodicidad").value("SEMANAL"));
+    }
+
+    @Test
     void updateIsUpsert() throws Exception {
         Map<String, Object> body = Map.of(
                 "umbralHorasExtra", 8, "tipoUmbral", "DIARIO", "multiplicadorHoraExtra", 1.5,

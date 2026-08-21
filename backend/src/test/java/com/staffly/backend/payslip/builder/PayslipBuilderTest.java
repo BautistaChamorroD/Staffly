@@ -108,6 +108,18 @@ class PayslipBuilderTest {
     }
 
     @Test
+    void periodicidadSemanal_usaCuarentaHorasNominales() {
+        config.setPeriodicidad(Periodicidad.SEMANAL);
+
+        List<Schedule> schedules = List.of(shift(2026, 8, 4, 9, 0, 17, 0));
+        PayslipCalculation result = builder().withSchedules(schedules).build();
+
+        assertEquals(bd("5000.000000"), result.valorHoraBase());
+        assertEquals(bd("8.00"), result.horasNormales());
+        assertEquals(bd("40000.00"), result.brutoCalculado());
+    }
+
+    @Test
     void horaExtraSupeUmbral_split() {
         // 10h → 8 normales + 2 extra
         List<Schedule> schedules = List.of(shift(2026, 8, 4, 8, 0, 18, 0));
