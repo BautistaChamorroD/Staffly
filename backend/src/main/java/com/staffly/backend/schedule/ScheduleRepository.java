@@ -15,8 +15,6 @@ public interface ScheduleRepository extends JpaRepository<Schedule, UUID> {
 
     Optional<Schedule> findByIdAndCompanyId(UUID id, UUID companyId);
 
-    List<Schedule> findByCompanyId(UUID companyId);
-
     /**
      * Detecta solapamiento: cualquier turno existente del empleado cuyo intervalo
      * se interseque con [inicio, fin). excludeId se usa en PATCH para excluir el
@@ -70,6 +68,44 @@ public interface ScheduleRepository extends JpaRepository<Schedule, UUID> {
             @Param("employeeId") UUID employeeId,
             @Param("inicio") LocalDateTime inicio,
             @Param("fin") LocalDateTime fin);
+
+    @Query("""
+        SELECT s FROM Schedule s
+        JOIN FETCH s.employee
+        JOIN FETCH s.branch
+        WHERE s.companyId = :companyId
+          AND (:employeeId IS NULL OR s.employee.id = :employeeId)
+          AND (:branchId IS NULL OR s.branch.id = :branchId)
+          AND (:desde IS NULL OR s.fechaHoraInicio >= :desde)
+          AND (:hastaExclusive IS NULL OR s.fechaHoraInicio < :hastaExclusive)
+        ORDER BY s.fechaHoraInicio ASC
+    """)
+    List<Schedule> findForList(
+            @Param("companyId") UUID companyId,
+            @Param("employeeId") UUID employeeId,
+            @Param("branchId") UUID branchId,
+            @Param("desde") LocalDateTime desde,
+            @Param("hastaExclusive") LocalDateTime hastaExclusive);
+
+    @Query("""
+        SELECT s FROM Schedule s
+        JOIN FETCH s.employee
+        JOIN FETCH s.branch
+        WHERE s.companyId = :companyId
+          AND s.branch.id IN :scopeBranchIds
+          AND (:employeeId IS NULL OR s.employee.id = :employeeId)
+          AND (:branchId IS NULL OR s.branch.id = :branchId)
+          AND (:desde IS NULL OR s.fechaHoraInicio >= :desde)
+          AND (:hastaExclusive IS NULL OR s.fechaHoraInicio < :hastaExclusive)
+        ORDER BY s.fechaHoraInicio ASC
+    """)
+    List<Schedule> findForListScopedToBranches(
+            @Param("companyId") UUID companyId,
+            @Param("scopeBranchIds") List<UUID> scopeBranchIds,
+            @Param("employeeId") UUID employeeId,
+            @Param("branchId") UUID branchId,
+            @Param("desde") LocalDateTime desde,
+            @Param("hastaExclusive") LocalDateTime hastaExclusive);
 
     @Query("""
         SELECT s FROM Schedule s WHERE s.companyId = :companyId

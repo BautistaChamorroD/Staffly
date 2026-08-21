@@ -34,7 +34,6 @@ import java.time.LocalTime;
 import java.time.YearMonth;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
@@ -70,24 +69,30 @@ public class ScheduleService {
     public List<ScheduleResponse> list(UUID employeeIdFilter, UUID branchIdFilter,
                                        LocalDate desde, LocalDate hasta,
                                        StafflyUserPrincipal principal) {
-        List<Schedule> all = scheduleRepository.findByCompanyId(principal.getCompanyId());
-
         UUID effectiveEmpId = employeeIdFilter;
         if (principal.getRol() == Rol.EMPLOYEE) {
             UUID own = resolveOwnEmployeeId(principal);
             if (own == null) return List.of();
             effectiveEmpId = own;
         }
-        final UUID finalEmpId = effectiveEmpId;
 
-        return all.stream()
-                .filter(s -> finalEmpId == null || s.getEmployee().getId().equals(finalEmpId))
-                .filter(s -> branchIdFilter == null || s.getBranch().getId().equals(branchIdFilter))
-                .filter(s -> desde == null || !s.getFechaHoraInicio().toLocalDate().isBefore(desde))
-                .filter(s -> hasta == null || !s.getFechaHoraInicio().toLocalDate().isAfter(hasta))
-                .filter(s -> principal.getRol() != Rol.SUPERVISOR
-                        || principal.getBranchIds().contains(s.getBranch().getId()))
-                .sorted(Comparator.comparing(Schedule::getFechaHoraInicio))
+        var desdeDateTime = desde != null ? desde.atStartOfDay() : null;
+        var hastaExclusive = hasta != null ? hasta.plusDays(1).atStartOfDay() : null;
+
+        List<Schedule> schedules;
+        if (principal.getRol() == Rol.SUPERVISOR) {
+            if (principal.getBranchIds() == null || principal.getBranchIds().isEmpty()) {
+                return List.of();
+            }
+            schedules = scheduleRepository.findForListScopedToBranches(
+                    principal.getCompanyId(), principal.getBranchIds(), effectiveEmpId, branchIdFilter,
+                    desdeDateTime, hastaExclusive);
+        } else {
+            schedules = scheduleRepository.findForList(
+                    principal.getCompanyId(), effectiveEmpId, branchIdFilter, desdeDateTime, hastaExclusive);
+        }
+
+        return schedules.stream()
                 .map(s -> ScheduleResponse.from(s, checkDisponibilidad(s, principal.getCompanyId())))
                 .toList();
     }
