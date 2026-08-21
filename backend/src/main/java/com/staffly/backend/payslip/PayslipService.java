@@ -120,13 +120,17 @@ public class PayslipService {
         Payslip original = payslipRepository.findByIdAndCompanyId(id, companyId)
                 .orElseThrow(() -> new ResourceNotFoundException("No se encontró el recibo"));
 
+        if (request == null) {
+            throw new BadRequestException("El motivo de anulacion es obligatorio");
+        }
+
         if (original.getEstado() != EstadoRecibo.PAGADO) {
             throw new UnprocessableEntityException(
                     "Solo se puede anular un recibo en estado PAGADO");
         }
 
         original.setEstado(EstadoRecibo.ANULADO);
-        original.setMotivoAnulacion(request != null ? request.motivoAnulacion() : null);
+        original.setMotivoAnulacion(request.motivoAnulacion());
         payslipRepository.save(original);
         publishFieldChange(original, principal, "estado", EstadoRecibo.PAGADO.name(), EstadoRecibo.ANULADO.name());
 

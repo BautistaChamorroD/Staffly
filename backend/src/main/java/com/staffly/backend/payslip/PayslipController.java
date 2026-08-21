@@ -5,6 +5,7 @@ import com.staffly.backend.payslip.dto.PayslipResponse;
 import com.staffly.backend.payslip.dto.VoidPayslipRequest;
 import com.staffly.backend.payslip.pdf.PayslipPdfService;
 import com.staffly.backend.security.StafflyUserPrincipal;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -66,7 +67,7 @@ public class PayslipController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<PayslipResponse> voidAndAdjust(
             @PathVariable UUID id,
-            @RequestBody(required = false) VoidPayslipRequest request,
+            @Valid @RequestBody(required = false) VoidPayslipRequest request,
             @AuthenticationPrincipal StafflyUserPrincipal principal) {
         return ResponseEntity.ok(payslipService.voidAndAdjust(id, request, principal));
     }

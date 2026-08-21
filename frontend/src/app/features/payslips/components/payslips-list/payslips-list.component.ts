@@ -193,8 +193,8 @@ export class PayslipsListComponent implements OnInit {
     if (!target) return;
     this.voiding = true;
     this.voidError = null;
-    const motivo = this.voidForm.getRawValue().motivo || undefined;
-    this.payslipService.voidAndAdjust(target.id, { motivo }).subscribe({
+    const motivoAnulacion = this.voidForm.getRawValue().motivo!;
+    this.payslipService.voidAndAdjust(target.id, { motivoAnulacion }).subscribe({
       next: (adjustment) => {
         this.voiding = false;
         this.voidTarget = null;

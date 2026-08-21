@@ -150,7 +150,9 @@ class PayslipVoidControllerTest {
         entityManager.flush();
 
         mockMvc.perform(post(BASE_URL + "/" + p.getId() + "/void")
-                        .header("Authorization", "Bearer " + adminAToken))
+                        .header("Authorization", "Bearer " + adminAToken)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(Map.of("motivoAnulacion", "No corresponde"))))
                 .andExpect(status().isUnprocessableEntity());
     }
 
@@ -160,7 +162,9 @@ class PayslipVoidControllerTest {
         entityManager.flush();
 
         mockMvc.perform(post(BASE_URL + "/" + p.getId() + "/void")
-                        .header("Authorization", "Bearer " + adminAToken))
+                        .header("Authorization", "Bearer " + adminAToken)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(Map.of("motivoAnulacion", "No corresponde"))))
                 .andExpect(status().isUnprocessableEntity());
     }
 
@@ -175,15 +179,37 @@ class PayslipVoidControllerTest {
     }
 
     @Test
-    void voidWithoutBodyStillWorks() throws Exception {
+    void voidWithoutBodyReturns400() throws Exception {
         Payslip p = createPayslip(companyAId, empA1, periodA, EstadoRecibo.PAGADO);
         entityManager.flush();
 
         mockMvc.perform(post(BASE_URL + "/" + p.getId() + "/void")
                         .header("Authorization", "Bearer " + adminAToken))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.tipo").value("AJUSTE"))
-                .andExpect(jsonPath("$.estado").value("GENERADO"));
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void voidWithBlankMotivoAnulacionReturns400() throws Exception {
+        Payslip p = createPayslip(companyAId, empA1, periodA, EstadoRecibo.PAGADO);
+        entityManager.flush();
+
+        mockMvc.perform(post(BASE_URL + "/" + p.getId() + "/void")
+                        .header("Authorization", "Bearer " + adminAToken)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(Map.of("motivoAnulacion", "   "))))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void voidWithLegacyMotivoFieldReturns400() throws Exception {
+        Payslip p = createPayslip(companyAId, empA1, periodA, EstadoRecibo.PAGADO);
+        entityManager.flush();
+
+        mockMvc.perform(post(BASE_URL + "/" + p.getId() + "/void")
+                        .header("Authorization", "Bearer " + adminAToken)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(Map.of("motivo", "Campo legacy"))))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

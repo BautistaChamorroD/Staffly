@@ -34,5 +34,5 @@ export interface Payslip {
 }
 
 export interface VoidPayslipRequest {
-  motivo?: string;
+  motivoAnulacion: string;
 }
