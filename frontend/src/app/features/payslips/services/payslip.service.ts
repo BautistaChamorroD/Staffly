@@ -20,7 +20,7 @@ export class PayslipService {
     );
   }
 
-  voidAndAdjust(id: string, request: VoidPayslipRequest = {}): Observable<Payslip> {
+  voidAndAdjust(id: string, request: VoidPayslipRequest): Observable<Payslip> {
     return this.http.post<Payslip>(`${this.baseUrl}/${id}/void`, request);
   }
 
